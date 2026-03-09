@@ -3,8 +3,8 @@ pytesseract>=0.3.13
 Pillow>=10.0.0
 opencv-python-headless>=4.9.0
 
-# AI metadata extraction
-anthropic>=0.28.0
+# Local AI metadata extraction via Ollama
+ollama>=0.3.0
 
 # Inbox watcher
 watchdog>=4.0.0

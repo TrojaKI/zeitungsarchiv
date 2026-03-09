@@ -1,15 +1,18 @@
-"""Claude API metadata extraction for newspaper article OCR text."""
+"""Local metadata extraction for newspaper article OCR text via Ollama."""
 
 import json
 import logging
+import os
 import re
 from datetime import datetime
 
-import anthropic
+import ollama
 
 log = logging.getLogger(__name__)
 
-_client: anthropic.Anthropic | None = None
+# Configurable via environment variables
+OLLAMA_HOST  = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
 VALID_CATEGORIES = {
     "Politik", "Wirtschaft", "Kultur", "Sport",
@@ -49,14 +52,6 @@ _FALLBACK: dict = {
 }
 
 
-def _get_client() -> anthropic.Anthropic:
-    """Return a shared Anthropic client (lazy init)."""
-    global _client
-    if _client is None:
-        _client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
-    return _client
-
-
 def _is_valid_date(value: str) -> bool:
     """Return True if value matches YYYY-MM-DD and is a real calendar date."""
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
@@ -69,63 +64,73 @@ def _is_valid_date(value: str) -> bool:
 
 
 def _validate(data: dict) -> dict:
-    """Validate and sanitize the raw API response dict."""
-    # Category must be from the allowed set
+    """Validate and sanitize the raw model response dict."""
     if data.get("category") not in VALID_CATEGORIES:
         data["category"] = "Sonstiges"
 
-    # Tags must be a list capped at 5 entries
     if not isinstance(data.get("tags"), list):
         data["tags"] = []
     data["tags"] = [str(t) for t in data["tags"][:5]]
 
-    # Date must be YYYY-MM-DD and a valid calendar date
     date = data.get("article_date")
     if date is not None and not _is_valid_date(str(date)):
         data["article_date"] = None
 
-    # Headline must be a non-empty string
     if not data.get("headline"):
         data["headline"] = "Unbekannt"
 
-    # Summary must be a string
     if not isinstance(data.get("summary"), str):
         data["summary"] = ""
 
     return data
 
 
-def extract_metadata(ocr_text: str, model: str = "claude-sonnet-4-20250514") -> dict:
-    """
-    Extract structured metadata from OCR text via Claude API.
+def _parse_json(raw: str) -> dict | None:
+    """Try to parse JSON, stripping accidental markdown fences if present."""
+    raw = raw.strip()
+    # Strip ```json ... ``` or ``` ... ``` wrappers that some models add
+    raw = re.sub(r"^```(?:json)?\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return None
 
-    Sends only the first 3000 characters to keep API costs low.
-    Returns a validated metadata dict. On any error returns _FALLBACK.
+
+def extract_metadata(ocr_text: str,
+                     model: str | None = None,
+                     host: str | None = None) -> dict:
+    """
+    Extract structured metadata from OCR text using a local Ollama model.
+
+    Uses format='json' to request structured output.
+    Falls back to _FALLBACK on any error — never raises.
     """
     if not ocr_text.strip():
         log.warning("extract_metadata: empty OCR text, returning fallback")
         return dict(_FALLBACK)
 
+    _model = model or OLLAMA_MODEL
+    _host  = host  or OLLAMA_HOST
     prompt = _PROMPT.format(ocr_text=ocr_text[:3000])
 
     try:
-        response = _get_client().messages.create(
-            model=model,
-            max_tokens=500,
+        client   = ollama.Client(host=_host)
+        response = client.chat(
+            model=_model,
             messages=[{"role": "user", "content": prompt}],
+            format="json",
         )
-        log.info("Claude API call: model=%s input_tokens=%s output_tokens=%s",
-                 model,
-                 response.usage.input_tokens,
-                 response.usage.output_tokens)
+        raw  = response.message.content
+        data = _parse_json(raw)
 
-        raw = response.content[0].text.strip()
-        data = json.loads(raw)
+        if data is None:
+            log.error("extract_metadata: invalid JSON from model, returning fallback\nRaw: %s", raw[:200])
+            return dict(_FALLBACK)
+
+        log.info("Ollama metadata extracted (model=%s)", _model)
         return _validate(data)
 
-    except json.JSONDecodeError:
-        log.error("extract_metadata: invalid JSON from API, returning fallback")
-        return dict(_FALLBACK)
-    except anthropic.APIError as exc:
-        log.error("extract_metadata: API error: %s", exc)
+    except Exception as exc:
+        log.error("extract_metadata: Ollama error: %s", exc)
         return dict(_FALLBACK)

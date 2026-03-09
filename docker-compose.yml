@@ -9,7 +9,10 @@ services:
       - ./archive:/app/archive     # processed articles + images (persistent)
       - ./db:/app/db               # SQLite database file (persistent)
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Ollama: use host.docker.internal to reach Ollama on the host machine,
+      # or replace with the URL of a dedicated Ollama container/server.
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5vl:3b}
       - INBOX_DIR=/app/inbox
       - ARCHIVE_DIR=/app/archive
       - DB_PATH=/app/db/archive.db
