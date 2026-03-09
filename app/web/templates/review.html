@@ -9,7 +9,7 @@
     <li class="result-card {% if a.needs_review %}needs-review{% endif %}">
       {% if a.thumb_path %}
         <a href="/articles/{{ a.id }}">
-          <img src="/archive/{{ a.thumb_path | replace('/app/archive/', '') }}"
+          <img src="/archive/{{ a.thumb_path }}"
                alt="Vorschau" class="thumb">
         </a>
       {% endif %}

@@ -4,7 +4,7 @@
 <div class="article-layout">
   <aside class="article-image">
     {% if article.image_path %}
-      <img src="/archive/{{ article.image_path | replace('/app/archive/', '') }}"
+      <img src="/archive/{{ article.image_path }}"
            alt="Scan {{ article.headline }}">
     {% endif %}
   </aside>

@@ -43,23 +43,30 @@ def binarize(img: np.ndarray) -> np.ndarray:
 
 def save_archive_image(img: np.ndarray, source: Path,
                        archive_dir: Path = ARCHIVE_DIR) -> Path:
-    """Save preprocessed grayscale image as WebP (quality 85) for the archive."""
+    """Save preprocessed grayscale image as WebP (quality 85) for the archive.
+
+    Returns a path relative to archive_dir so the URL /archive/<path> always works
+    regardless of whether the app runs locally or inside Docker.
+    """
     out_dir = archive_dir / source.stem
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / "image.webp"
-    cv2.imwrite(str(path), img, [cv2.IMWRITE_WEBP_QUALITY, 85])
-    return path
+    abs_path = out_dir / "image.webp"
+    cv2.imwrite(str(abs_path), img, [cv2.IMWRITE_WEBP_QUALITY, 85])
+    return Path(source.stem) / "image.webp"   # relative to archive_dir
 
 
 def save_thumbnail(img: np.ndarray, source: Path, width: int = 300,
                    archive_dir: Path = ARCHIVE_DIR) -> Path:
-    """Save a JPEG thumbnail (width=300px) for the webapp list view."""
+    """Save a JPEG thumbnail (width=300px) for the webapp list view.
+
+    Returns a path relative to archive_dir.
+    """
     h, w = img.shape[:2]
     new_h = int(h * width / w)
     thumb = cv2.resize(img, (width, new_h), interpolation=cv2.INTER_AREA)
-    path = archive_dir / source.stem / "thumb.jpg"
-    cv2.imwrite(str(path), thumb, [cv2.IMWRITE_JPEG_QUALITY, 80])
-    return path
+    abs_path = archive_dir / source.stem / "thumb.jpg"
+    cv2.imwrite(str(abs_path), thumb, [cv2.IMWRITE_JPEG_QUALITY, 80])
+    return Path(source.stem) / "thumb.jpg"     # relative to archive_dir
 
 
 def preprocess(tiff_path: Path, archive_dir: Path = ARCHIVE_DIR) -> dict:
