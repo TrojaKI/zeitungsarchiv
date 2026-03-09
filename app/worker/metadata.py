@@ -16,7 +16,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
 VALID_CATEGORIES = {
     "Politik", "Wirtschaft", "Kultur", "Sport",
-    "Wissenschaft", "Lokales", "International", "Sonstiges",
+    "Wissenschaft", "Lokales", "International", "Reise", "Sonstiges",
 }
 
 _PROMPT = """\
@@ -32,7 +32,7 @@ null wenn unklar.
 - headline: Hauptschlagzeile des Artikels. Pflichtfeld.
 - summary: Zusammenfassung in 2-3 deutschen Sätzen. Pflichtfeld.
 - category: Eines von exakt: Politik, Wirtschaft, Kultur, Sport, \
-Wissenschaft, Lokales, International, Sonstiges
+Wissenschaft, Lokales, International, Reise, Sonstiges
 - tags: Array mit 3-5 relevanten deutschen Stichwörtern
 
 Antworte NUR mit validem JSON ohne Markdown-Backticks oder Erklärungen.

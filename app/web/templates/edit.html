@@ -26,7 +26,7 @@
     </label>
     <label>Kategorie
       <select name="category">
-        {% for cat in ['Politik','Wirtschaft','Kultur','Sport','Wissenschaft','Lokales','International','Sonstiges'] %}
+        {% for cat in ['Politik','Wirtschaft','Kultur','Sport','Wissenschaft','Lokales','International','Reise','Sonstiges'] %}
           <option value="{{ cat }}" {% if article.category == cat %}selected{% endif %}>{{ cat }}</option>
         {% endfor %}
       </select>
