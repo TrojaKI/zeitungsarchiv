@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Environment (API keys etc.)
+.env
+*.env
+
+# Runtime data (managed via Docker volumes, not versioned)
+inbox/*
+!inbox/.gitkeep
+archive/*
+!archive/.gitkeep
+db/*.sqlite
+db/*.db
+
+# Large binary scan files in examples/
+examples/*.tif
+examples/*.tiff
+examples/*.jpg
+examples/*.jpeg
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
+logs/
