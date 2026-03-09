@@ -21,12 +21,11 @@ def _ctx(request: Request, **kwargs) -> dict:
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     opts = get_filter_options(_DB)
-    # Pre-load all articles so the list is visible without requiring a search
     results = search_full(limit=20, db_path=_DB)
     return _templates.TemplateResponse(
         "index.html",
         _ctx(request, results=results, q="", newspaper="", category="",
-             date_from="", date_to="", **opts),
+             date_from="", date_to="", location="", **opts),
     )
 
 
@@ -38,6 +37,7 @@ async def search(
     category: str = "",
     date_from: str = "",
     date_to: str = "",
+    location: str = "",
     offset: int = 0,
 ):
     results = search_full(
@@ -46,6 +46,7 @@ async def search(
         category=category,
         date_from=date_from,
         date_to=date_to,
+        location=location,
         limit=20,
         offset=offset,
         db_path=_DB,
@@ -59,10 +60,10 @@ async def search(
         category=category,
         date_from=date_from,
         date_to=date_to,
+        location=location,
         offset=offset,
         **opts,
     )
-    # HTMX partial request: return only the results fragment
     if request.headers.get("hx-request"):
         return _templates.TemplateResponse("search_results.html", ctx)
     return _templates.TemplateResponse("index.html", ctx)

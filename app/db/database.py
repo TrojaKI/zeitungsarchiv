@@ -127,6 +127,7 @@ def search_full(
     category: str = "",
     date_from: str = "",
     date_to: str = "",
+    location: str = "",
     needs_review: Optional[bool] = None,
     limit: int = 20,
     offset: int = 0,
@@ -169,6 +170,11 @@ def search_full(
     if needs_review is not None:
         sql += f" {prefix}needs_review = ?"
         params.append(1 if needs_review else 0)
+    if location:
+        # Locations stored as JSON array — match exact entry via JSON quoting
+        loc_col = "a.locations" if q else "locations"
+        sql += f' AND {loc_col} LIKE ?'
+        params.append(f'%"{location}"%')
 
     order_col = "a.article_date" if q else "article_date"
     sql += f" ORDER BY {order_col} DESC LIMIT ? OFFSET ?"
@@ -210,7 +216,7 @@ def get_stats(db_path: Path = _DEFAULT_DB_PATH) -> dict:
 
 
 def get_filter_options(db_path: Path = _DEFAULT_DB_PATH) -> dict:
-    """Return distinct values for filter dropdowns (newspapers, categories)."""
+    """Return distinct values for filter dropdowns (newspapers, categories, locations)."""
     with get_connection(db_path) as conn:
         newspapers = [
             r[0] for r in conn.execute(
@@ -224,4 +230,21 @@ def get_filter_options(db_path: Path = _DEFAULT_DB_PATH) -> dict:
                 "WHERE category IS NOT NULL ORDER BY category"
             ).fetchall()
         ]
-    return {"newspapers": newspapers, "categories": categories}
+        # Parse all locations JSON arrays and collect distinct values
+        raw_locs = conn.execute(
+            "SELECT locations FROM articles WHERE locations IS NOT NULL AND locations != '[]'"
+        ).fetchall()
+
+    all_locations: set[str] = set()
+    for row in raw_locs:
+        try:
+            locs = json.loads(row[0])
+            all_locations.update(locs)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    return {
+        "newspapers": newspapers,
+        "categories": categories,
+        "locations": sorted(all_locations),
+    }

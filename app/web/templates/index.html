@@ -23,6 +23,12 @@
           <option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>
         {% endfor %}
       </select>
+      <select name="location">
+        <option value="">Alle Orte</option>
+        {% for l in locations %}
+          <option value="{{ l }}" {% if l == location %}selected{% endif %}>{{ l }}</option>
+        {% endfor %}
+      </select>
       <label>Von <input type="date" name="date_from" value="{{ date_from }}"></label>
       <label>Bis <input type="date" name="date_to" value="{{ date_to }}"></label>
     </div>
