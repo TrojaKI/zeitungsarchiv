@@ -29,6 +29,20 @@
         <dt>Tags</dt>
         <dd>{% for t in article.tags %}<span class="tag">{{ t }}</span> {% endfor %}</dd>
       {% endif %}
+      {% if article.locations %}
+        {% set locs = article.locations | from_json %}
+        {% if locs %}
+        <dt>Orte</dt>
+        <dd>{% for l in locs %}<span class="tag-location">{{ l }}</span> {% endfor %}</dd>
+        {% endif %}
+      {% endif %}
+      {% if article.urls %}
+        {% set links = article.urls | from_json %}
+        {% if links %}
+        <dt>URLs</dt>
+        <dd>{% for u in links %}<a href="{{ u if u.startswith('http') else 'https://' + u }}" target="_blank" rel="noopener" class="ext-link">{{ u }}</a> {% endfor %}</dd>
+        {% endif %}
+      {% endif %}
       <dt>OCR-Konfidenz</dt>
       <dd>{{ article.ocr_confidence }}%
         {% if article.needs_review %}<span class="badge-warn">Review nötig</span>{% endif %}

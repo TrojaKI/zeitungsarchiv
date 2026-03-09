@@ -35,18 +35,23 @@ def insert_article(article: dict, db_path: Path = _DEFAULT_DB_PATH) -> int:
             filename, scan_date, newspaper, article_date, page,
             headline, summary, category, tags,
             full_text, image_path, thumb_path,
-            ocr_confidence, needs_review, meta_source
+            ocr_confidence, needs_review, meta_source,
+            locations, urls
         ) VALUES (
             :filename, :scan_date, :newspaper, :article_date, :page,
             :headline, :summary, :category, :tags,
             :full_text, :image_path, :thumb_path,
-            :ocr_confidence, :needs_review, :meta_source
+            :ocr_confidence, :needs_review, :meta_source,
+            :locations, :urls
         )
     """
     # Serialize tags list to JSON string if necessary
     data = dict(article)
-    if isinstance(data.get("tags"), list):
-        data["tags"] = json.dumps(data["tags"], ensure_ascii=False)
+    for field in ("tags", "locations", "urls"):
+        if isinstance(data.get(field), list):
+            data[field] = json.dumps(data[field], ensure_ascii=False)
+    data.setdefault("locations", None)
+    data.setdefault("urls", None)
 
     with get_connection(db_path) as conn:
         cursor = conn.execute(sql, data)

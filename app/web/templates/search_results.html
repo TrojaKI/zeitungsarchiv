@@ -1,12 +1,10 @@
 {% if results %}
   <ul class="results">
     {% for a in results %}
-    <li class="result-card">
+    <li class="result-card" onclick="location.href='/articles/{{ a.id }}'" style="cursor:pointer">
       {% if a.thumb_path %}
-        <a href="/articles/{{ a.id }}">
-          <img src="/archive/{{ a.thumb_path }}"
-               alt="Vorschau {{ a.headline }}" class="thumb">
-        </a>
+        <img src="/archive/{{ a.thumb_path }}"
+             alt="Vorschau {{ a.headline }}" class="thumb">
       {% endif %}
       <div class="result-info">
         <a href="/articles/{{ a.id }}" class="headline">{{ a.headline or '(keine Schlagzeile)' }}</a>
@@ -16,6 +14,14 @@
           {% if a.category %}<span class="tag">{{ a.category }}</span>{% endif %}
           {% if a.needs_review %}<span class="badge-warn">Review</span>{% endif %}
         </div>
+        {% if a.locations %}
+          {% set locs = a.locations | from_json %}
+          {% if locs %}
+          <div class="meta">
+            {% for loc in locs %}<span class="tag-location">{{ loc }}</span>{% endfor %}
+          </div>
+          {% endif %}
+        {% endif %}
         {% if a.snippet %}
           <p class="snippet">{{ a.snippet | safe }}</p>
         {% elif a.summary %}

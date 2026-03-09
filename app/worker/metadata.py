@@ -34,6 +34,11 @@ null wenn unklar.
 - category: Eines von exakt: Politik, Wirtschaft, Kultur, Sport, \
 Wissenschaft, Lokales, International, Reise, Sonstiges
 - tags: Array mit 3-5 relevanten deutschen Stichwörtern
+- locations: Array mit allen Ortsnamen, Städten, Regionen und Ländern die im Artikel \
+vorkommen. Z.B. ["Wien", "Wachau", "Österreich", "Gardasee", "Italien"]. Leeres Array \
+wenn keine Orte erkennbar.
+- urls: Array mit allen Websites, URLs und E-Mail-Adressen die im Text vorkommen. \
+Z.B. ["www.apfelbauer.at", "info@hotel.com"]. Leeres Array wenn keine vorhanden.
 
 Antworte NUR mit validem JSON ohne Markdown-Backticks oder Erklärungen.
 
@@ -71,6 +76,14 @@ def _validate(data: dict) -> dict:
     if not isinstance(data.get("tags"), list):
         data["tags"] = []
     data["tags"] = [str(t) for t in data["tags"][:5]]
+
+    if not isinstance(data.get("locations"), list):
+        data["locations"] = []
+    data["locations"] = [str(l) for l in data["locations"]]
+
+    if not isinstance(data.get("urls"), list):
+        data["urls"] = []
+    data["urls"] = [str(u) for u in data["urls"]]
 
     date = data.get("article_date")
     if date is not None and not _is_valid_date(str(date)):

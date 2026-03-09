@@ -6,12 +6,11 @@ from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app.db.database import get_article, get_review_count, update_article
+from app.web.templating import templates as _templates
 
 router = APIRouter()
-_templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
 _DB = Path(os.getenv("DB_PATH", "/app/db/archive.db"))
 
 

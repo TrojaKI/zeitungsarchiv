@@ -89,3 +89,6 @@ th { background: #f0f0ec; font-weight: 600; }
 .badge { background: #e07b00; color: #fff; border-radius: 10px; font-size: .72rem; padding: 1px 6px; vertical-align: middle; margin-left: 3px; }
 .badge-warn { background: #e07b00; color: #fff; border-radius: 10px; font-size: .72rem; padding: 1px 6px; }
 .tag { background: #e8e8e8; border-radius: 3px; padding: 1px 6px; font-size: .8rem; }
+.tag-location { background: #d6eaf8; color: #1a5276; border-radius: 3px; padding: 1px 6px; font-size: .8rem; }
+.ext-link { font-size: .85rem; color: #2b5da4; word-break: break-all; }
+.result-card:hover { box-shadow: 0 2px 8px #0002; }
