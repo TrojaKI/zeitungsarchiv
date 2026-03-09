@@ -35,6 +35,14 @@
       <input type="text" name="tags"
              value="{{ article.tags | join(', ') if article.tags else '' }}">
     </label>
+    <label>Orte (kommagetrennt)
+      <input type="text" name="locations"
+             value="{{ article.locations | from_json | join(', ') if article.locations else '' }}">
+    </label>
+    <label>URLs (kommagetrennt)
+      <input type="text" name="urls"
+             value="{{ article.urls | from_json | join(', ') if article.urls else '' }}">
+    </label>
     <label>Zusammenfassung
       <textarea name="summary" rows="4">{{ article.summary or '' }}</textarea>
     </label>

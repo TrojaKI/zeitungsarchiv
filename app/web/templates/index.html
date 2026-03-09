@@ -5,7 +5,7 @@
   <form id="search-form"
         hx-get="/search"
         hx-target="#results"
-        hx-trigger="submit, input[name='q'] delay:400ms">
+        hx-trigger="submit, input[name='q'] delay:400ms, change[target.tagName=='SELECT'] delay:100ms">
     <div class="search-row">
       <input type="text" name="q" value="{{ q }}" placeholder="Stichwort suchen…" autofocus>
       <button type="submit">Suchen</button>

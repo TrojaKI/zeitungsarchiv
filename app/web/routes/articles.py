@@ -54,9 +54,13 @@ async def article_update(
     headline: str = Form(""),
     summary: str = Form(""),
     category: str = Form(""),
-    tags: str = Form(""),  # comma-separated
+    tags: str = Form(""),       # comma-separated
+    locations: str = Form(""),  # comma-separated
+    urls: str = Form(""),       # comma-separated
 ):
-    tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+    def split_csv(s: str) -> list[str]:
+        return [x.strip() for x in s.split(",") if x.strip()]
+
     update_article(
         article_id,
         {
@@ -66,7 +70,9 @@ async def article_update(
             "headline": headline,
             "summary": summary,
             "category": category,
-            "tags": tag_list,
+            "tags": split_csv(tags),
+            "locations": split_csv(locations),
+            "urls": split_csv(urls),
             "meta_source": "manual",
             "needs_review": 0,
         },
