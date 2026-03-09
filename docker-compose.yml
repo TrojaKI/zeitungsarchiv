@@ -1,0 +1,27 @@
+services:
+  archiv:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./inbox:/app/inbox         # scan input (host ↔ container)
+      - ./archive:/app/archive     # processed articles + images (persistent)
+      - ./db:/app/db               # SQLite database file (persistent)
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - INBOX_DIR=/app/inbox
+      - ARCHIVE_DIR=/app/archive
+      - DB_PATH=/app/db/archive.db
+      - OCR_LANG=deu
+      - OCR_CONFIDENCE_THRESHOLD=70
+      - WATCH_INBOX=true
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8000
+      - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "zeitungsarchiv"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = []   # managed via requirements.txt
+
+[project.scripts]
+# Registers the `zeitungsarchiv` CLI command after `pip install -e .`
+zeitungsarchiv = "app.cli.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
