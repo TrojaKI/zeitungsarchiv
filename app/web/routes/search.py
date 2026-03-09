@@ -22,9 +22,11 @@ def _ctx(request: Request, **kwargs) -> dict:
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     opts = get_filter_options(_DB)
+    # Pre-load all articles so the list is visible without requiring a search
+    results = search_full(limit=20, db_path=_DB)
     return _templates.TemplateResponse(
         "index.html",
-        _ctx(request, results=[], q="", newspaper="", category="",
+        _ctx(request, results=results, q="", newspaper="", category="",
              date_from="", date_to="", **opts),
     )
 
