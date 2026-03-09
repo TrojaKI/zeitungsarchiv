@@ -1,0 +1,21 @@
+[scan]
+inbox_dir = "/app/inbox"
+archive_dir = "/app/archive"
+watch_interval_seconds = 5
+
+[ocr]
+language = "deu"
+confidence_threshold = 70       # below this value → needs_review = true
+dpi_expected = 400
+
+[claude]
+model = "claude-sonnet-4-20250514"
+max_tokens = 1000
+
+[web]
+host = "0.0.0.0"
+port = 8000
+items_per_page = 20
+
+[export]
+formats = ["csv", "json"]

@@ -1,0 +1,22 @@
+# OCR & image processing
+pytesseract>=0.3.13
+Pillow>=10.0.0
+opencv-python-headless>=4.9.0
+
+# AI metadata extraction
+anthropic>=0.28.0
+
+# Inbox watcher
+watchdog>=4.0.0
+
+# Web backend
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+jinja2>=3.1.4
+python-multipart>=0.0.9
+
+# CLI
+click>=8.1.7
+
+# Configuration
+tomllib>=2.0.1; python_version < "3.11"
