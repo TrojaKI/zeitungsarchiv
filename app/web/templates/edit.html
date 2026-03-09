@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Bearbeiten – {{ article.headline }}{% endblock %}
+{% block content %}
+<div class="edit-layout">
+  <aside class="article-image">
+    {% if article.image_path %}
+      <img src="/archive/{{ article.image_path | replace('/app/archive/', '') }}"
+           alt="Scan">
+    {% endif %}
+  </aside>
+
+  <form class="edit-form" action="/articles/{{ article.id }}" method="post">
+    <h2>Metadaten bearbeiten</h2>
+
+    <label>Schlagzeile
+      <input type="text" name="headline" value="{{ article.headline or '' }}" required>
+    </label>
+    <label>Zeitung
+      <input type="text" name="newspaper" value="{{ article.newspaper or '' }}">
+    </label>
+    <label>Erscheinungsdatum
+      <input type="date" name="article_date" value="{{ article.article_date or '' }}">
+    </label>
+    <label>Seite
+      <input type="text" name="page" value="{{ article.page or '' }}">
+    </label>
+    <label>Kategorie
+      <select name="category">
+        {% for cat in ['Politik','Wirtschaft','Kultur','Sport','Wissenschaft','Lokales','International','Sonstiges'] %}
+          <option value="{{ cat }}" {% if article.category == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Tags (kommagetrennt)
+      <input type="text" name="tags"
+             value="{{ article.tags | join(', ') if article.tags else '' }}">
+    </label>
+    <label>Zusammenfassung
+      <textarea name="summary" rows="4">{{ article.summary or '' }}</textarea>
+    </label>
+
+    <div class="actions">
+      <button type="submit" class="btn">Speichern</button>
+      <a href="/articles/{{ article.id }}" class="btn-secondary">Abbrechen</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

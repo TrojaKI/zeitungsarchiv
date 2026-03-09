@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Suche – Zeitungsarchiv{% endblock %}
+{% block content %}
+<section class="search-box">
+  <form id="search-form"
+        hx-get="/search"
+        hx-target="#results"
+        hx-trigger="submit, input[name='q'] delay:400ms">
+    <div class="search-row">
+      <input type="text" name="q" value="{{ q }}" placeholder="Stichwort suchen…" autofocus>
+      <button type="submit">Suchen</button>
+    </div>
+    <div class="filter-row">
+      <select name="newspaper">
+        <option value="">Alle Zeitungen</option>
+        {% for n in newspapers %}
+          <option value="{{ n }}" {% if n == newspaper %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+      <select name="category">
+        <option value="">Alle Kategorien</option>
+        {% for c in categories %}
+          <option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+      <label>Von <input type="date" name="date_from" value="{{ date_from }}"></label>
+      <label>Bis <input type="date" name="date_to" value="{{ date_to }}"></label>
+    </div>
+  </form>
+</section>
+<div id="results">
+  {% include "search_results.html" %}
+</div>
+{% endblock %}

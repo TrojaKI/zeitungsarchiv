@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Review Queue – Zeitungsarchiv{% endblock %}
+{% block content %}
+<h1>Review Queue <span class="badge">{{ review_count }}</span></h1>
+
+{% if articles %}
+  <ul class="results">
+    {% for a in articles %}
+    <li class="result-card {% if a.needs_review %}needs-review{% endif %}">
+      {% if a.thumb_path %}
+        <a href="/articles/{{ a.id }}">
+          <img src="/archive/{{ a.thumb_path | replace('/app/archive/', '') }}"
+               alt="Vorschau" class="thumb">
+        </a>
+      {% endif %}
+      <div class="result-info">
+        <a href="/articles/{{ a.id }}" class="headline">{{ a.headline or '(keine Schlagzeile)' }}</a>
+        <div class="meta">
+          {% if a.newspaper %}<span>{{ a.newspaper }}</span>{% endif %}
+          {% if a.article_date %}<span>{{ a.article_date }}</span>{% endif %}
+          <span>OCR: {{ a.ocr_confidence }}%</span>
+        </div>
+        {% if a.summary %}<p class="snippet">{{ a.summary }}</p>{% endif %}
+        <div class="actions">
+          <a href="/articles/{{ a.id }}/edit" class="btn">Bearbeiten</a>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="empty">Keine Artikel zur Review. Alles erledigt!</p>
+{% endif %}
+{% endblock %}

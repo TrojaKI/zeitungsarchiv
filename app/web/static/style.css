@@ -1,0 +1,91 @@
+/* Zeitungsarchiv — minimal stylesheet */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #222;
+  background: #f5f4f0;
+}
+
+/* ── Header ── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: .75rem 1.5rem;
+  background: #1a1a1a;
+  color: #fff;
+}
+.brand { color: #e8d5a3; font-weight: 700; font-size: 1.1rem; text-decoration: none; }
+nav { display: flex; gap: 1.25rem; }
+nav a { color: #ccc; text-decoration: none; font-size: .9rem; }
+nav a:hover { color: #fff; }
+
+/* ── Layout ── */
+main { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+h1 { font-size: 1.4rem; margin-bottom: 1rem; }
+h2 { font-size: 1.1rem; margin-bottom: .75rem; }
+
+/* ── Search ── */
+.search-box { background: #fff; border-radius: 6px; padding: 1rem; margin-bottom: 1.25rem; box-shadow: 0 1px 4px #0001; }
+.search-row { display: flex; gap: .5rem; margin-bottom: .5rem; }
+.search-row input[type=text] { flex: 1; }
+.filter-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; font-size: .88rem; }
+input, select, textarea { padding: .4rem .6rem; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+input:focus, select:focus, textarea:focus { outline: 2px solid #4a7fcb; border-color: transparent; }
+button, .btn { padding: .4rem .9rem; background: #2b5da4; color: #fff; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font: inherit; font-size: .9rem; }
+button:hover, .btn:hover { background: #1e4a87; }
+.btn-secondary { padding: .4rem .9rem; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; font-size: .9rem; }
+.btn-secondary:hover { background: #ddd; }
+
+/* ── Results ── */
+.results { list-style: none; display: flex; flex-direction: column; gap: .75rem; }
+.result-card { display: flex; gap: 1rem; background: #fff; border-radius: 6px; padding: .85rem 1rem; box-shadow: 0 1px 3px #0001; }
+.result-card.needs-review { border-left: 3px solid #e07b00; }
+.thumb { width: 80px; height: 100px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
+.result-info { flex: 1; min-width: 0; }
+a.headline { font-weight: 600; color: #1a1a1a; text-decoration: none; display: block; margin-bottom: .25rem; }
+a.headline:hover { color: #2b5da4; }
+.meta { display: flex; flex-wrap: wrap; gap: .4rem; font-size: .8rem; color: #666; margin-bottom: .3rem; }
+.snippet { font-size: .88rem; color: #444; }
+.snippet mark { background: #fff3b0; padding: 0 1px; }
+.empty { color: #888; padding: 1rem 0; }
+
+/* ── Article detail ── */
+.article-layout { display: flex; gap: 2rem; align-items: flex-start; }
+.article-image img { max-width: 340px; border-radius: 4px; box-shadow: 0 2px 8px #0002; }
+.article-body { flex: 1; }
+.article-body h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+dl.metadata { display: grid; grid-template-columns: max-content 1fr; gap: .3rem .75rem; font-size: .9rem; margin-bottom: 1rem; background: #fff; padding: .75rem; border-radius: 4px; }
+dt { color: #666; }
+dd { font-weight: 500; }
+.summary { margin-bottom: 1rem; padding: .75rem; background: #fff; border-radius: 4px; font-size: .95rem; }
+details summary { cursor: pointer; color: #2b5da4; font-size: .9rem; margin-bottom: .5rem; }
+.ocr-text { font-size: .82rem; line-height: 1.6; white-space: pre-wrap; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 4px; padding: .75rem; max-height: 400px; overflow-y: auto; }
+.actions { display: flex; gap: .75rem; margin-top: 1.25rem; }
+
+/* ── Edit form ── */
+.edit-layout { display: flex; gap: 2rem; align-items: flex-start; }
+.edit-form { flex: 1; display: flex; flex-direction: column; gap: .75rem; background: #fff; padding: 1.25rem; border-radius: 6px; }
+.edit-form label { display: flex; flex-direction: column; gap: .25rem; font-size: .9rem; font-weight: 500; }
+.edit-form input, .edit-form select, .edit-form textarea { width: 100%; }
+
+/* ── Stats ── */
+.stats-grid { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+.stat-card { background: #fff; border-radius: 6px; padding: 1.25rem 1.75rem; text-align: center; box-shadow: 0 1px 4px #0001; }
+.stat-card.warn { border-top: 3px solid #e07b00; }
+.stat-number { font-size: 2.5rem; font-weight: 700; color: #2b5da4; }
+.stat-label { font-size: .85rem; color: #666; margin-top: .25rem; }
+.stats-columns { display: flex; gap: 2rem; margin-bottom: 1.5rem; }
+.stats-columns section { flex: 1; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; background: #fff; border-radius: 4px; overflow: hidden; }
+th, td { padding: .5rem .75rem; text-align: left; border-bottom: 1px solid #eee; }
+th { background: #f0f0ec; font-weight: 600; }
+
+/* ── Badges ── */
+.badge { background: #e07b00; color: #fff; border-radius: 10px; font-size: .72rem; padding: 1px 6px; vertical-align: middle; margin-left: 3px; }
+.badge-warn { background: #e07b00; color: #fff; border-radius: 10px; font-size: .72rem; padding: 1px 6px; }
+.tag { background: #e8e8e8; border-radius: 3px; padding: 1px 6px; font-size: .8rem; }

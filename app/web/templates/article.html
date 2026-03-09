@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ article.headline }} – Zeitungsarchiv{% endblock %}
+{% block content %}
+<div class="article-layout">
+  <aside class="article-image">
+    {% if article.image_path %}
+      <img src="/archive/{{ article.image_path | replace('/app/archive/', '') }}"
+           alt="Scan {{ article.headline }}">
+    {% endif %}
+  </aside>
+
+  <div class="article-body">
+    <h1>{{ article.headline }}</h1>
+
+    <dl class="metadata">
+      {% if article.newspaper %}
+        <dt>Zeitung</dt><dd>{{ article.newspaper }}</dd>
+      {% endif %}
+      {% if article.article_date %}
+        <dt>Datum</dt><dd>{{ article.article_date }}</dd>
+      {% endif %}
+      {% if article.page %}
+        <dt>Seite</dt><dd>{{ article.page }}</dd>
+      {% endif %}
+      {% if article.category %}
+        <dt>Kategorie</dt><dd>{{ article.category }}</dd>
+      {% endif %}
+      {% if article.tags %}
+        <dt>Tags</dt>
+        <dd>{% for t in article.tags %}<span class="tag">{{ t }}</span> {% endfor %}</dd>
+      {% endif %}
+      <dt>OCR-Konfidenz</dt>
+      <dd>{{ article.ocr_confidence }}%
+        {% if article.needs_review %}<span class="badge-warn">Review nötig</span>{% endif %}
+      </dd>
+    </dl>
+
+    {% if article.summary %}
+      <p class="summary">{{ article.summary }}</p>
+    {% endif %}
+
+    <details>
+      <summary>OCR-Volltext</summary>
+      <pre class="ocr-text">{{ article.full_text }}</pre>
+    </details>
+
+    <div class="actions">
+      <a href="/articles/{{ article.id }}/edit" class="btn">Metadaten bearbeiten</a>
+      <a href="/" class="btn-secondary">Zurück zur Suche</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

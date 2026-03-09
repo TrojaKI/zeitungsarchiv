@@ -1,0 +1,30 @@
+{% if results %}
+  <ul class="results">
+    {% for a in results %}
+    <li class="result-card">
+      {% if a.thumb_path %}
+        <a href="/articles/{{ a.id }}">
+          <img src="/archive/{{ a.thumb_path | replace('/app/archive/', '') }}"
+               alt="Vorschau {{ a.headline }}" class="thumb">
+        </a>
+      {% endif %}
+      <div class="result-info">
+        <a href="/articles/{{ a.id }}" class="headline">{{ a.headline or '(keine Schlagzeile)' }}</a>
+        <div class="meta">
+          {% if a.newspaper %}<span>{{ a.newspaper }}</span>{% endif %}
+          {% if a.article_date %}<span>{{ a.article_date }}</span>{% endif %}
+          {% if a.category %}<span class="tag">{{ a.category }}</span>{% endif %}
+          {% if a.needs_review %}<span class="badge-warn">Review</span>{% endif %}
+        </div>
+        {% if a.snippet %}
+          <p class="snippet">{{ a.snippet | safe }}</p>
+        {% elif a.summary %}
+          <p class="snippet">{{ a.summary }}</p>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="empty">Keine Artikel gefunden.</p>
+{% endif %}

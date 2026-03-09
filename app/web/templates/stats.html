@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Statistiken – Zeitungsarchiv{% endblock %}
+{% block content %}
+<h1>Archiv-Statistiken</h1>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-number">{{ total }}</div>
+    <div class="stat-label">Artikel gesamt</div>
+  </div>
+  <div class="stat-card {% if needs_review %}warn{% endif %}">
+    <div class="stat-number">{{ needs_review }}</div>
+    <div class="stat-label">Zur Review</div>
+  </div>
+</div>
+
+<div class="stats-columns">
+  <section>
+    <h2>Nach Zeitung</h2>
+    {% if by_newspaper %}
+      <table>
+        <thead><tr><th>Zeitung</th><th>Artikel</th></tr></thead>
+        <tbody>
+          {% for row in by_newspaper %}
+          <tr><td>{{ row.newspaper }}</td><td>{{ row.cnt }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">Keine Daten.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Nach Kategorie</h2>
+    {% if by_category %}
+      <table>
+        <thead><tr><th>Kategorie</th><th>Artikel</th></tr></thead>
+        <tbody>
+          {% for row in by_category %}
+          <tr><td>{{ row.category }}</td><td>{{ row.cnt }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">Keine Daten.</p>
+    {% endif %}
+  </section>
+</div>
+
+<div class="actions">
+  <a href="/export?fmt=csv" class="btn-secondary">Export CSV</a>
+  <a href="/export?fmt=json" class="btn-secondary">Export JSON</a>
+</div>
+{% endblock %}
