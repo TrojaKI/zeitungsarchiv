@@ -8,20 +8,29 @@ from pathlib import Path
 ARCHIVE_DIR = Path("/app/archive")
 
 
-def deskew(img: np.ndarray) -> np.ndarray:
-    """Correct skew via minAreaRect on dark pixel coordinates."""
-    coords = np.column_stack(np.where(img < 128))
+def _deskew_angle(gray: np.ndarray) -> float:
+    """Compute skew correction angle from a grayscale image."""
+    coords = np.column_stack(np.where(gray < 128))
     if len(coords) < 10:
-        return img
+        return 0.0
     angle = cv2.minAreaRect(coords.astype(np.float32))[-1]
     if angle < -45:
         angle = 90 + angle
-    if abs(angle) < 0.5:
-        return img  # correction not needed
-    h, w = img.shape
+    return angle if abs(angle) >= 0.5 else 0.0
+
+
+def _rotate(img: np.ndarray, angle: float) -> np.ndarray:
+    """Rotate image by angle degrees (works for both grayscale and color)."""
+    h, w = img.shape[:2]
     M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
     return cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_CUBIC,
                           borderMode=cv2.BORDER_REPLICATE)
+
+
+def deskew(img: np.ndarray) -> np.ndarray:
+    """Correct skew via minAreaRect on dark pixel coordinates (grayscale input)."""
+    angle = _deskew_angle(img)
+    return _rotate(img, angle) if angle != 0.0 else img
 
 
 def normalize_contrast(img: np.ndarray) -> np.ndarray:
@@ -43,7 +52,7 @@ def binarize(img: np.ndarray) -> np.ndarray:
 
 def save_archive_image(img: np.ndarray, source: Path,
                        archive_dir: Path = ARCHIVE_DIR) -> Path:
-    """Save preprocessed grayscale image as WebP (quality 85) for the archive.
+    """Save image as WebP (quality 85) for the archive (color or grayscale).
 
     Returns a path relative to archive_dir so the URL /archive/<path> always works
     regardless of whether the app runs locally or inside Docker.
@@ -74,27 +83,40 @@ def preprocess(tiff_path: Path, archive_dir: Path = ARCHIVE_DIR) -> dict:
     Full preprocessing pipeline for a TIFF scan.
 
     Steps:
-      1. Load as grayscale
-      2. Deskew
-      3. Normalize contrast (CLAHE)
-      4. Reduce noise (median filter)
-      5. Save archive WebP + thumbnail (before binarization)
-      6. Binarize for OCR
+      1. Load in color (preserves original scan colors)
+      2. Convert to grayscale for analysis
+      3. Deskew (angle computed from grayscale, applied to both)
+      4. Normalize contrast + reduce noise (grayscale, for OCR)
+      5. Save color archive WebP + thumbnail
+      6. Binarize grayscale for OCR
 
     Returns a dict with keys: image_path, thumb_path, binary (np.ndarray).
     """
-    img = cv2.imread(str(tiff_path), cv2.IMREAD_GRAYSCALE)
-    if img is None:
+    img_color = cv2.imread(str(tiff_path), cv2.IMREAD_COLOR)
+    if img_color is None:
         raise ValueError(f"Could not read image: {tiff_path}")
 
-    img = deskew(img)
-    img = normalize_contrast(img)
-    img = reduce_noise(img)
+    # Convert 16-bit to 8-bit if needed (some TIFFs are 16-bit)
+    if img_color.dtype != np.uint8:
+        img_color = (img_color / 256).astype(np.uint8)
 
-    image_path = save_archive_image(img, tiff_path, archive_dir)
-    thumb_path = save_thumbnail(img, tiff_path, archive_dir=archive_dir)
+    img_gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)
 
-    binary = binarize(img)
+    # Deskew: compute angle from grayscale, apply to both images
+    angle = _deskew_angle(img_gray)
+    if angle != 0.0:
+        img_color = _rotate(img_color, angle)
+        img_gray = _rotate(img_gray, angle)
+
+    # Contrast + noise reduction on grayscale (for OCR quality)
+    img_proc = normalize_contrast(img_gray)
+    img_proc = reduce_noise(img_proc)
+
+    # Save the color image for the archive and thumbnail
+    image_path = save_archive_image(img_color, tiff_path, archive_dir)
+    thumb_path = save_thumbnail(img_color, tiff_path, archive_dir=archive_dir)
+
+    binary = binarize(img_proc)
 
     return {
         "image_path": str(image_path),
