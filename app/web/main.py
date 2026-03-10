@@ -13,6 +13,10 @@ _STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="Zeitungsarchiv")
 
+# Static files: app CSS/JS and archive images
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+app.mount("/archive", StaticFiles(directory=str(_ARCHIVE_DIR)), name="archive")
+
 # Register routers
 app.include_router(search.router)
 app.include_router(articles.router)
