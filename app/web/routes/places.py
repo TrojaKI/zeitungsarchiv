@@ -22,10 +22,11 @@ def _ctx(request: Request, **kwargs) -> dict:
 async def places_list(request: Request, q: str = "", city: str = "", country: str = ""):
     places = get_all_places(query=q, city=city, country=country, db_path=_DB)
     opts = get_place_filter_options(_DB)
-    return _templates.TemplateResponse(
-        "places.html",
-        _ctx(request, places=places, q=q, city=city, country=country, **opts),
-    )
+    ctx = _ctx(request, places=places, q=q, city=city, country=country, **opts)
+    # HTMX partial request: return only the results fragment
+    if request.headers.get("hx-request"):
+        return _templates.TemplateResponse("places_results.html", ctx)
+    return _templates.TemplateResponse("places.html", ctx)
 
 
 @router.post("/places/{place_id}")
