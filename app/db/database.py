@@ -62,8 +62,9 @@ def update_article(article_id: int, fields: dict, db_path: Path = _DEFAULT_DB_PA
     """Update specific fields of an existing article."""
     if not fields:
         return
-    if isinstance(fields.get("tags"), list):
-        fields["tags"] = json.dumps(fields["tags"], ensure_ascii=False)
+    for field in ("tags", "locations", "urls"):
+        if isinstance(fields.get(field), list):
+            fields[field] = json.dumps(fields[field], ensure_ascii=False)
 
     set_clause = ", ".join(f"{k} = :{k}" for k in fields)
     fields["_id"] = article_id
