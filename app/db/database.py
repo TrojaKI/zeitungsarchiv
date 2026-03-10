@@ -216,6 +216,44 @@ def get_stats(db_path: Path = _DEFAULT_DB_PATH) -> dict:
     }
 
 
+def insert_places(article_id: int, places: list[dict],
+                  db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Delete existing places for the article and insert the new list."""
+    sql = """INSERT INTO places
+             (article_id, name, description, address, postal_code,
+              city, country, phone, hours, url)
+             VALUES (:article_id, :name, :description, :address, :postal_code,
+                     :city, :country, :phone, :hours, :url)"""
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM places WHERE article_id = ?", (article_id,))
+        for p in places:
+            conn.execute(sql, {"article_id": article_id, **p})
+
+
+def get_places(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
+    """Return all places linked to an article."""
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM places WHERE article_id = ? ORDER BY id", (article_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def search_places(query: str, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
+    """Search places by name, city, or address (case-insensitive LIKE)."""
+    q = f"%{query}%"
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            """SELECT p.*, a.headline, a.article_date, a.newspaper
+               FROM places p JOIN articles a ON a.id = p.article_id
+               WHERE p.name LIKE ? OR p.city LIKE ? OR p.address LIKE ?
+                  OR p.postal_code LIKE ? OR p.country LIKE ?
+               ORDER BY p.city, p.name""",
+            (q, q, q, q, q),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def get_filter_options(db_path: Path = _DEFAULT_DB_PATH) -> dict:
     """Return distinct values for filter dropdowns (newspapers, categories, locations)."""
     with get_connection(db_path) as conn:

@@ -91,4 +91,9 @@ th { background: #f0f0ec; font-weight: 600; }
 .tag { background: #e8e8e8; border-radius: 3px; padding: 1px 6px; font-size: .8rem; }
 .tag-location { background: #d6eaf8; color: #1a5276; border-radius: 3px; padding: 1px 6px; font-size: .8rem; }
 .ext-link { font-size: .85rem; color: #2b5da4; word-break: break-all; }
+.places { margin-top: 1.5rem; }
+.places h2 { font-size: 1rem; margin-bottom: .5rem; }
+.places-table { font-size: .85rem; }
+.places-table td { vertical-align: top; padding: .4rem .6rem; }
+.places-table small { color: #666; }
 .result-card:hover { box-shadow: 0 2px 8px #0002; }

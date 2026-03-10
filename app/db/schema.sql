@@ -64,3 +64,18 @@ END;
 CREATE TRIGGER IF NOT EXISTS articles_updated_at AFTER UPDATE ON articles BEGIN
     UPDATE articles SET updated_at = datetime('now') WHERE id = new.id;
 END;
+
+-- Places extracted from articles (restaurants, hotels, shops, ...)
+CREATE TABLE IF NOT EXISTS places (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    article_id  INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    name        TEXT,           -- e.g. "APFELBAUER", "Quellenhof Resort"
+    description TEXT,           -- short description from the article
+    address     TEXT,           -- street + number
+    postal_code TEXT,           -- e.g. "2761"
+    city        TEXT,           -- e.g. "Miesenbach"
+    country     TEXT,           -- e.g. "Österreich", "Italien"
+    phone       TEXT,           -- e.g. "02632/8244"
+    hours       TEXT,           -- e.g. "Mi-Sa 11-21, So 11-20"
+    url         TEXT            -- e.g. "www.apfelbauer.at"
+);

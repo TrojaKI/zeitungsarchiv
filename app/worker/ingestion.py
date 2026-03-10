@@ -5,9 +5,10 @@ import shutil
 from datetime import date
 from pathlib import Path
 
-from app.db.database import init_db, insert_article
+from app.db.database import init_db, insert_article, insert_places
 from app.worker.metadata import extract_metadata
 from app.worker.ocr import process_scan
+from app.worker.places import extract_places
 
 log = logging.getLogger(__name__)
 
@@ -76,6 +77,9 @@ def ingest(
         "meta_source": ocr_result.get("meta_source", metadata.get("meta_source", "auto")),
     }
 
+    # Extract structured place listings (restaurants, hotels, etc.)
+    places = extract_places(ocr_result["full_text"])
+
     try:
         article_id = insert_article(article, db_path)
     except Exception as exc:
@@ -83,7 +87,12 @@ def ingest(
         _quarantine(tiff_path, archive_dir, f"DB insert failed: {exc}")
         return None
 
-    # --- step 4: move original TIFF to archive ---
+    # --- step 4: save extracted places ---
+    if places:
+        insert_places(article_id, places, db_path)
+        log.info("Saved %d place(s) for article id=%s", len(places), article_id)
+
+    # --- step 5: move original TIFF to archive ---
     dest_dir = archive_dir / tiff_path.stem
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / "original.tif"

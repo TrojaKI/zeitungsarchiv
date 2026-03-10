@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from app.db.database import get_article, get_review_count, update_article
+from app.db.database import get_article, get_places, get_review_count, update_article
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -29,7 +29,8 @@ async def article_detail(request: Request, article_id: int):
             article["tags"] = json.loads(article["tags"])
         except (json.JSONDecodeError, TypeError):
             article["tags"] = []
-    return _templates.TemplateResponse("article.html", _ctx(request, article=article))
+    places = get_places(article_id, _DB)
+    return _templates.TemplateResponse("article.html", _ctx(request, article=article, places=places))
 
 
 @router.get("/articles/{article_id}/edit", response_class=HTMLResponse)

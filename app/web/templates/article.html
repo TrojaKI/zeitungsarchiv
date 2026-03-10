@@ -53,6 +53,39 @@
       <p class="summary">{{ article.summary }}</p>
     {% endif %}
 
+    {% if places %}
+    <section class="places">
+      <h2>Orte &amp; Betriebe im Artikel</h2>
+      <table class="places-table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Adresse</th><th>Ort</th>
+            <th>Telefon</th><th>Öffnungszeiten</th><th>Website</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in places %}
+          <tr>
+            <td><strong>{{ p.name or '' }}</strong>
+              {% if p.description %}<br><small>{{ p.description }}</small>{% endif %}
+            </td>
+            <td>{{ p.address or '' }}</td>
+            <td>{% if p.postal_code %}{{ p.postal_code }} {% endif %}{{ p.city or '' }}
+              {% if p.country %}<br><small>{{ p.country }}</small>{% endif %}
+            </td>
+            <td>{{ p.phone or '' }}</td>
+            <td>{{ p.hours or '' }}</td>
+            <td>{% if p.url %}
+              <a href="{{ p.url if p.url.startswith('http') else 'https://' + p.url }}"
+                 target="_blank" rel="noopener" class="ext-link">{{ p.url }}</a>
+            {% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
     <details>
       <summary>OCR-Volltext</summary>
       <pre class="ocr-text">{{ article.full_text }}</pre>
