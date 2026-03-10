@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Adressen – Zeitungsarchiv{% endblock %}
+{% block content %}
+<section class="search-box">
+  <form hx-get="/places" hx-target="#places-results"
+        hx-trigger="submit, input[name='q'] delay:400ms, change[target.tagName=='SELECT'] delay:100ms">
+    <div class="search-row">
+      <input type="text" name="q" value="{{ q }}" placeholder="Name, Ort, Adresse…" autofocus>
+      <button type="submit">Suchen</button>
+    </div>
+    <div class="filter-row">
+      <select name="country">
+        <option value="">Alle Länder</option>
+        {% for c in countries %}
+          <option value="{{ c }}" {% if c == country %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+      <select name="city">
+        <option value="">Alle Orte</option>
+        {% for c in cities %}
+          <option value="{{ c }}" {% if c == city %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+</section>
+
+<div id="places-results">
+  {% include "places_results.html" %}
+</div>
+{% endblock %}

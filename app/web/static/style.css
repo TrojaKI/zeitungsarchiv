@@ -96,4 +96,18 @@ th { background: #f0f0ec; font-weight: 600; }
 .places-table { font-size: .85rem; }
 .places-table td { vertical-align: top; padding: .4rem .6rem; }
 .places-table small { color: #666; }
+.places-count { font-size: .85rem; color: #666; margin-bottom: .5rem; }
+
+/* Places edit in article editor */
+.places-edit { margin-top: 2rem; }
+.places-edit h2 { font-size: 1rem; margin-bottom: .75rem; }
+.place-edit-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: .5rem; }
+.place-edit-card summary { padding: .5rem .75rem; cursor: pointer; font-weight: 500; font-size: .9rem; }
+.place-form { padding: .75rem; }
+.place-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.place-grid .full-width { grid-column: 1 / -1; }
+.place-grid label { display: flex; flex-direction: column; gap: .2rem; font-size: .85rem; font-weight: 500; }
+.place-grid input, .place-grid textarea { font: inherit; }
+.btn-delete { padding: .3rem .75rem; background: #c0392b; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: .85rem; margin: .5rem .75rem .75rem; }
+.btn-delete:hover { background: #a93226; }
 .result-card:hover { box-shadow: 0 2px 8px #0002; }

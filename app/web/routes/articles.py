@@ -43,7 +43,8 @@ async def article_edit(request: Request, article_id: int):
             article["tags"] = json.loads(article["tags"])
         except (json.JSONDecodeError, TypeError):
             article["tags"] = []
-    return _templates.TemplateResponse("edit.html", _ctx(request, article=article))
+    places = get_places(article_id, _DB)
+    return _templates.TemplateResponse("edit.html", _ctx(request, article=article, places=places))
 
 
 @router.post("/articles/{article_id}")

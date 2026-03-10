@@ -186,6 +186,63 @@ def search_full(
     return [dict(r) for r in rows]
 
 
+def update_place(place_id: int, fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Update specific fields of a place entry."""
+    if not fields:
+        return
+    set_clause = ", ".join(f"{k} = :{k}" for k in fields)
+    fields["_id"] = place_id
+    with get_connection(db_path) as conn:
+        conn.execute(f"UPDATE places SET {set_clause} WHERE id = :_id", fields)
+
+
+def delete_place(place_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Delete a single place entry."""
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM places WHERE id = ?", (place_id,))
+
+
+def get_all_places(
+    query: str = "",
+    city: str = "",
+    country: str = "",
+    db_path: Path = _DEFAULT_DB_PATH,
+) -> list[dict]:
+    """Return all places with article info, optionally filtered."""
+    params: list = []
+    sql = """
+        SELECT p.*, a.id AS article_id, a.headline, a.article_date, a.newspaper
+        FROM places p JOIN articles a ON a.id = p.article_id
+        WHERE 1=1
+    """
+    if query:
+        sql += " AND (p.name LIKE ? OR p.city LIKE ? OR p.address LIKE ? OR p.country LIKE ?)"
+        q = f"%{query}%"
+        params.extend([q, q, q, q])
+    if city:
+        sql += " AND p.city LIKE ?"
+        params.append(f"%{city}%")
+    if country:
+        sql += " AND p.country = ?"
+        params.append(country)
+    sql += " ORDER BY p.country, p.city, p.name"
+    with get_connection(db_path) as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_place_filter_options(db_path: Path = _DEFAULT_DB_PATH) -> dict:
+    """Return distinct countries and cities for place filter dropdowns."""
+    with get_connection(db_path) as conn:
+        countries = [r[0] for r in conn.execute(
+            "SELECT DISTINCT country FROM places WHERE country IS NOT NULL ORDER BY country"
+        ).fetchall()]
+        cities = [r[0] for r in conn.execute(
+            "SELECT DISTINCT city FROM places WHERE city IS NOT NULL ORDER BY city"
+        ).fetchall()]
+    return {"countries": countries, "cities": cities}
+
+
 def get_review_count(db_path: Path = _DEFAULT_DB_PATH) -> int:
     """Return the number of articles flagged for manual review."""
     with get_connection(db_path) as conn:

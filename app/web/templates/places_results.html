@@ -1,0 +1,32 @@
+{% if places %}
+<p class="places-count">{{ places | length }} Eintrag/Einträge</p>
+<table class="places-table">
+  <thead>
+    <tr>
+      <th>Name</th><th>Adresse</th><th>PLZ / Ort</th><th>Land</th>
+      <th>Telefon</th><th>Öffnungszeiten</th><th>Website</th><th>Artikel</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in places %}
+    <tr>
+      <td><strong>{{ p.name or '–' }}</strong>
+        {% if p.description %}<br><small>{{ p.description }}</small>{% endif %}
+      </td>
+      <td>{{ p.address or '–' }}</td>
+      <td>{% if p.postal_code %}{{ p.postal_code }} {% endif %}{{ p.city or '–' }}</td>
+      <td>{{ p.country or '–' }}</td>
+      <td>{{ p.phone or '–' }}</td>
+      <td>{{ p.hours or '–' }}</td>
+      <td>{% if p.url %}
+        <a href="{{ p.url if p.url.startswith('http') else 'https://' + p.url }}"
+           target="_blank" rel="noopener" class="ext-link">{{ p.url }}</a>
+      {% else %}–{% endif %}</td>
+      <td><a href="/articles/{{ p.article_id }}">{{ p.headline or p.article_id }}</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">Keine Einträge gefunden.</p>
+{% endif %}

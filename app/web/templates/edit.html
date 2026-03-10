@@ -52,5 +52,40 @@
       <a href="/articles/{{ article.id }}" class="btn-secondary">Abbrechen</a>
     </div>
   </form>
+
+  {% if places %}
+  <section class="places-edit">
+    <h2>Orte &amp; Betriebe</h2>
+    {% for p in places %}
+    <details class="place-edit-card">
+      <summary>{{ p.name or '(kein Name)' }} — {{ p.city or '' }}</summary>
+      <form class="place-form" action="/places/{{ p.id }}" method="post">
+        <input type="hidden" name="article_id" value="{{ article.id }}">
+        <div class="place-grid">
+          <label>Name<input type="text" name="name" value="{{ p.name or '' }}"></label>
+          <label>Adresse<input type="text" name="address" value="{{ p.address or '' }}"></label>
+          <label>PLZ<input type="text" name="postal_code" value="{{ p.postal_code or '' }}"></label>
+          <label>Ort<input type="text" name="city" value="{{ p.city or '' }}"></label>
+          <label>Land<input type="text" name="country" value="{{ p.country or '' }}"></label>
+          <label>Telefon<input type="text" name="phone" value="{{ p.phone or '' }}"></label>
+          <label>Öffnungszeiten<input type="text" name="hours" value="{{ p.hours or '' }}"></label>
+          <label>Website<input type="text" name="url" value="{{ p.url or '' }}"></label>
+          <label class="full-width">Beschreibung
+            <textarea name="description" rows="2">{{ p.description or '' }}</textarea>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Speichern</button>
+        </div>
+      </form>
+      <form action="/places/{{ p.id }}/delete" method="post" style="display:inline"
+            onsubmit="return confirm('Eintrag löschen?')">
+        <input type="hidden" name="article_id" value="{{ article.id }}">
+        <button type="submit" class="btn-delete">Löschen</button>
+      </form>
+    </details>
+    {% endfor %}
+  </section>
+  {% endif %}
 </div>
 {% endblock %}
