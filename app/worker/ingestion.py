@@ -1,6 +1,7 @@
 """Full ingestion pipeline: TIFF scan → preprocess → OCR → metadata → DB."""
 
 import logging
+import re
 import shutil
 from datetime import date
 from pathlib import Path
@@ -9,8 +10,52 @@ from app.db.database import init_db, insert_article, insert_places
 from app.worker.metadata import extract_metadata
 from app.worker.ocr import process_scan
 from app.worker.places import extract_places
+from app.worker.stitch import stitch_multipart
 
 log = logging.getLogger(__name__)
+
+_PART_RE = re.compile(r"^(.+)_(\d{2})$")
+
+
+def group_multipart_scans(
+    tiffs: list[Path],
+) -> tuple[list[Path], list[tuple[list[Path], Path]]]:
+    """Split a TIFF list into files to ingest directly and groups to stitch first.
+
+    Pattern: stem ending in _NN (2 digits).
+    - _00 → direct ingest (merged file already present)
+    - _01/_02/… + existing _00 → skip parts, _00 already handled
+    - _01/_02/… without _00 → group for stitching
+    - no suffix pattern → direct ingest
+    """
+    # Separate matched from unmatched stems
+    groups: dict[str, dict[int, Path]] = {}  # prefix → {index: path}
+    standalone: list[Path] = []
+
+    for tiff in tiffs:
+        m = _PART_RE.match(tiff.stem)
+        if m:
+            prefix, idx = m.group(1), int(m.group(2))
+            groups.setdefault(prefix, {})[idx] = tiff
+        else:
+            standalone.append(tiff)
+
+    to_ingest: list[Path] = list(standalone)
+    to_stitch: list[tuple[list[Path], Path]] = []
+
+    for prefix, indexed in groups.items():
+        if 0 in indexed:
+            # _00 already exists — ingest it, ignore parts
+            to_ingest.append(indexed[0])
+        else:
+            # Only raw parts present — schedule stitching
+            parts = [indexed[i] for i in sorted(indexed) if i > 0]
+            # Output path sits next to the parts
+            output_path = parts[0].parent / f"{prefix}_00.tif"
+            to_stitch.append((parts, output_path))
+
+    return to_ingest, to_stitch
+
 
 # Subdirectory for files that could not be processed
 _QUARANTINE_DIR_NAME = "quarantine"
@@ -113,6 +158,9 @@ def ingest_directory(
     """
     Process all TIFF files currently present in inbox_dir.
 
+    Multi-part scans (_01, _02, …) are stitched via Hugin into a _00 file
+    before ingestion. Parts are moved to archive/<stem>/parts/ afterwards.
+
     Initializes the DB schema on first run.
     Returns a list of successfully created article ids.
     """
@@ -123,11 +171,27 @@ def ingest_directory(
         log.info("No TIFF files found in %s", inbox_dir)
         return []
 
+    standalone, groups = group_multipart_scans(tiffs)
+
+    # Stitch groups that don't have a _00 yet
+    for parts, output_path in groups:
+        try:
+            stitch_multipart(parts, output_path)
+            standalone.append(output_path)
+            # Move raw parts out of inbox into archive/<stem>/parts/
+            dest_parts_dir = archive_dir / output_path.stem / "parts"
+            dest_parts_dir.mkdir(parents=True, exist_ok=True)
+            for p in parts:
+                shutil.move(str(p), dest_parts_dir / p.name)
+        except Exception as exc:
+            log.error("Stitching failed for %s: %s", output_path.name, exc)
+            # Parts stay in inbox; no _00 created; skip this group
+
     ids = []
-    for tiff in tiffs:
+    for tiff in sorted(standalone):
         article_id = ingest(tiff, archive_dir, db_path)
         if article_id is not None:
             ids.append(article_id)
 
-    log.info("Batch complete: %d/%d files ingested successfully", len(ids), len(tiffs))
+    log.info("Batch complete: %d/%d files ingested successfully", len(ids), len(standalone))
     return ids

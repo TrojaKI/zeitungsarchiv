@@ -1,6 +1,7 @@
 """Inbox directory watcher: triggers ingestion when new TIFF files appear."""
 
 import logging
+import re
 import time
 from pathlib import Path
 
@@ -13,6 +14,16 @@ from app.worker.ingestion import ingest
 log = logging.getLogger(__name__)
 
 _TIFF_SUFFIXES = {".tif", ".tiff"}
+_PART_RE = re.compile(r"^.+_(\d{2})$")
+
+
+def _is_raw_part(path: Path) -> bool:
+    """Return True for _01, _02, … files (not _00).
+
+    Raw parts must be stitched via 'zeitungsarchiv process' before import.
+    """
+    m = _PART_RE.match(path.stem)
+    return bool(m) and int(m.group(1)) > 0
 
 
 class _TiffHandler(FileSystemEventHandler):
@@ -27,6 +38,10 @@ class _TiffHandler(FileSystemEventHandler):
             return
         path = Path(event.src_path)
         if path.suffix.lower() not in _TIFF_SUFFIXES:
+            return
+
+        if _is_raw_part(path):
+            log.info("Skipping raw scan part (use 'process' to stitch): %s", path.name)
             return
 
         # Wait briefly so the scanner has finished writing the file
