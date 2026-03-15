@@ -1,11 +1,42 @@
 """Image preprocessing for newspaper scans (deskew, contrast, noise reduction)."""
 
+import logging
+
 import cv2
 import numpy as np
+import pytesseract
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 # Archive and thumbnail output directories (overridden by settings at runtime)
 ARCHIVE_DIR = Path("/app/archive")
+
+
+def detect_orientation(gray: np.ndarray) -> int:
+    """Detect page orientation using Tesseract OSD.
+
+    Returns the rotation angle in degrees (90, 180, 270) needed to correct
+    the image to upright, or 0 if detection fails or confidence is too low.
+    """
+    try:
+        osd = pytesseract.image_to_osd(
+            gray,
+            output_type=pytesseract.Output.DICT,
+            config="--psm 0",
+        )
+        confidence = float(osd.get("orientation_conf", 0))
+        if confidence < 2.0:
+            log.debug("OSD confidence too low (%.2f), skipping orientation fix", confidence)
+            return 0
+        rotate = int(osd.get("rotate", 0))
+        if rotate not in (90, 180, 270):
+            return 0
+        log.info("OSD detected rotation: %d° (confidence %.2f)", rotate, confidence)
+        return rotate
+    except Exception as exc:
+        log.debug("OSD orientation detection failed: %s", exc)
+        return 0
 
 
 def _deskew_angle(gray: np.ndarray) -> float:
@@ -102,7 +133,14 @@ def preprocess(tiff_path: Path, archive_dir: Path = ARCHIVE_DIR) -> dict:
 
     img_gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)
 
-    # Deskew: compute angle from grayscale, apply to both images
+    # Step 1: correct 90°/180°/270° orientation via Tesseract OSD
+    rotate = detect_orientation(img_gray)
+    if rotate:
+        k = rotate // 90
+        img_color = np.ascontiguousarray(np.rot90(img_color, k=k))
+        img_gray = np.ascontiguousarray(np.rot90(img_gray, k=k))
+
+    # Step 2: fine deskew for small residual angles (±45°)
     angle = _deskew_angle(img_gray)
     if angle != 0.0:
         img_color = _rotate(img_color, angle)
