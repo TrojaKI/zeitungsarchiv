@@ -20,13 +20,19 @@ CREATE TABLE IF NOT EXISTS articles (
     full_text       TEXT,                   -- OCR full text
     image_path      TEXT,                   -- path to WebP archive image
     thumb_path      TEXT,                   -- path to JPEG thumbnail
+    locations       TEXT,                   -- JSON array of place names mentioned
+    urls            TEXT,                   -- JSON array of URLs mentioned
 
     -- Quality & status
     ocr_confidence  REAL,                   -- Tesseract confidence 0.0–100.0
     needs_review    INTEGER DEFAULT 0,      -- 1 = manual review required
     meta_source     TEXT DEFAULT 'auto',    -- 'auto' | 'manual' | 'partial'
     created_at      TEXT DEFAULT (datetime('now')),
-    updated_at      TEXT DEFAULT (datetime('now'))
+    updated_at      TEXT DEFAULT (datetime('now')),
+
+    -- Multi-page article grouping (_pNN convention)
+    article_group   TEXT,                   -- e.g. "sternlicht_oase" (null for single-page)
+    page_number     INTEGER                 -- 1-based page index (null for single-page)
 );
 
 -- Full-text index (SQLite FTS5) for fast search

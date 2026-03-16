@@ -12,6 +12,17 @@
   </aside>
 
   <div class="article-body">
+    {% if group_pages %}
+    <nav class="page-nav" aria-label="Seitennavigation">
+      {% for p in group_pages %}
+        <a href="/articles/{{ p.id }}"
+           class="page-nav-item{% if p.id == article.id %} active{% endif %}">
+          Seite {{ p.page_number }}
+        </a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+
     <h1>{{ article.headline }}</h1>
 
     <dl class="metadata">

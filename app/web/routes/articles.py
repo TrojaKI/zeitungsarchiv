@@ -5,9 +5,9 @@ import os
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from app.db.database import get_article, get_places, get_review_count, update_article
+from app.db.database import get_article, get_group_articles, get_places, get_review_count, update_article
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -16,6 +16,15 @@ _DB = Path(os.getenv("DB_PATH", "/app/db/archive.db"))
 
 def _ctx(request: Request, **kwargs) -> dict:
     return {"request": request, "review_count": get_review_count(_DB), **kwargs}
+
+
+@router.get("/articles/group/{group}", response_class=HTMLResponse)
+async def article_group_view(group: str, request: Request):
+    """Redirect to the first page of a multi-page article group."""
+    pages = get_group_articles(group, _DB)
+    if not pages:
+        return HTMLResponse("Article group not found", status_code=404)
+    return RedirectResponse(f"/articles/{pages[0]['id']}", status_code=302)
 
 
 @router.get("/articles/{article_id}", response_class=HTMLResponse)
@@ -30,7 +39,16 @@ async def article_detail(request: Request, article_id: int):
         except (json.JSONDecodeError, TypeError):
             article["tags"] = []
     places = get_places(article_id, _DB)
-    return _templates.TemplateResponse("article.html", _ctx(request, article=article, places=places))
+    # Fetch sibling pages for multi-page articles
+    group_pages = (
+        get_group_articles(article["article_group"], _DB)
+        if article.get("article_group")
+        else []
+    )
+    return _templates.TemplateResponse(
+        "article.html",
+        _ctx(request, article=article, places=places, group_pages=group_pages),
+    )
 
 
 @router.get("/articles/{article_id}/edit", response_class=HTMLResponse)

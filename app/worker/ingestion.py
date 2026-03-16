@@ -15,6 +15,8 @@ from app.worker.stitch import stitch_multipart
 log = logging.getLogger(__name__)
 
 _PART_RE = re.compile(r"^(.+)_(\d{2})$")
+# Multi-page articles: name_p01.tif, name_p02.tif, … (NOT stitched, kept separate)
+_PAGE_RE = re.compile(r"^(.+)_p(\d{2})$", re.IGNORECASE)
 
 
 def group_multipart_scans(
@@ -88,6 +90,11 @@ def ingest(
     """
     log.info("Ingesting: %s", tiff_path.name)
 
+    # Detect multi-page article convention: name_p01.tif, name_p02.tif, …
+    _page_match = _PAGE_RE.match(tiff_path.stem)
+    article_group = _page_match.group(1) if _page_match else None
+    page_number = int(_page_match.group(2)) if _page_match else None
+
     # --- step 1: OCR ---
     try:
         ocr_result = process_scan(tiff_path, archive_dir)
@@ -120,6 +127,8 @@ def ingest(
         "ocr_confidence": ocr_result["ocr_confidence"],
         "needs_review": int(ocr_result["needs_review"]),
         "meta_source": ocr_result.get("meta_source", metadata.get("meta_source", "auto")),
+        "article_group": article_group,
+        "page_number": page_number,
     }
 
     # Extract structured place listings (restaurants, hotels, etc.)

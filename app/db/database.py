@@ -26,6 +26,17 @@ def init_db(db_path: Path = _DEFAULT_DB_PATH) -> None:
     schema = _SCHEMA_PATH.read_text()
     with get_connection(db_path) as conn:
         conn.executescript(schema)
+        # Migrate existing DBs: add columns introduced after initial schema
+        existing = {row[1] for row in conn.execute("PRAGMA table_info(articles)")}
+        migrations = [
+            ("locations", "ALTER TABLE articles ADD COLUMN locations TEXT"),
+            ("urls", "ALTER TABLE articles ADD COLUMN urls TEXT"),
+            ("article_group", "ALTER TABLE articles ADD COLUMN article_group TEXT"),
+            ("page_number", "ALTER TABLE articles ADD COLUMN page_number INTEGER"),
+        ]
+        for col, sql in migrations:
+            if col not in existing:
+                conn.execute(sql)
 
 
 def insert_article(article: dict, db_path: Path = _DEFAULT_DB_PATH) -> int:
@@ -36,13 +47,15 @@ def insert_article(article: dict, db_path: Path = _DEFAULT_DB_PATH) -> int:
             headline, summary, category, tags,
             full_text, image_path, thumb_path,
             ocr_confidence, needs_review, meta_source,
-            locations, urls
+            locations, urls,
+            article_group, page_number
         ) VALUES (
             :filename, :scan_date, :newspaper, :article_date, :page,
             :headline, :summary, :category, :tags,
             :full_text, :image_path, :thumb_path,
             :ocr_confidence, :needs_review, :meta_source,
-            :locations, :urls
+            :locations, :urls,
+            :article_group, :page_number
         )
     """
     # Serialize tags list to JSON string if necessary
@@ -52,10 +65,22 @@ def insert_article(article: dict, db_path: Path = _DEFAULT_DB_PATH) -> int:
             data[field] = json.dumps(data[field], ensure_ascii=False)
     data.setdefault("locations", None)
     data.setdefault("urls", None)
+    data.setdefault("article_group", None)
+    data.setdefault("page_number", None)
 
     with get_connection(db_path) as conn:
         cursor = conn.execute(sql, data)
         return cursor.lastrowid
+
+
+def get_group_articles(group: str, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
+    """Return all articles belonging to the same article_group, ordered by page_number."""
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM articles WHERE article_group = ? ORDER BY page_number",
+            (group,),
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def update_article(article_id: int, fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> None:
