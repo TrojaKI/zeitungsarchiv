@@ -110,7 +110,7 @@ cp .env.example .env
 #### 2. Systemabhängigkeiten
 
 ```bash
-brew install tesseract tesseract-lang opencv python@3.12
+brew install tesseract tesseract-lang opencv python@3.13
 ```
 
 Für mehrseitige Scans (optional):
@@ -135,7 +135,7 @@ Alternativ: [ollama.com/download](https://ollama.com/download) → macOS-App her
 git clone https://github.com/TrojaKI/zeitungsarchiv.git
 cd zeitungsarchiv
 
-python3.12 -m venv .venv
+python3.13 -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
@@ -183,7 +183,7 @@ export INBOX_DIR=$(pwd)/inbox
 mkdir -p inbox archive db
 
 # WebApp starten
-uvicorn app.web.main:app --host 0.0.0.0 --port 8000
+uvicorn app.web.main:app --host 0.0.0.0 --port 8000 &
 
 # In einem zweiten Terminal: Scans verarbeiten
 zeitungsarchiv process
