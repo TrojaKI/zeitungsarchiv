@@ -136,7 +136,9 @@ def preprocess(tiff_path: Path, archive_dir: Path = ARCHIVE_DIR) -> dict:
     # Step 1: correct 90°/180°/270° orientation via Tesseract OSD
     rotate = detect_orientation(img_gray)
     if rotate:
-        k = rotate // 90
+        # Tesseract rotate = clockwise degrees needed; np.rot90 is CCW,
+        # so invert: k = (4 - rotate/90) % 4 gives equivalent CW rotation.
+        k = (4 - rotate // 90) % 4
         img_color = np.ascontiguousarray(np.rot90(img_color, k=k))
         img_gray = np.ascontiguousarray(np.rot90(img_gray, k=k))
 
