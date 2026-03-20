@@ -26,6 +26,7 @@ setze null — NICHT raten.
 
 Felder:
 - newspaper: Name der Zeitung (z.B. "Kurier", "Süddeutsche Zeitung", "Die Zeit"). \
+Nur der Zeitungsname, nicht der Ressort- oder Beilagenname (z.B. "Freizeit", "Wirtschaft"). \
 null wenn unklar.
 - article_date: Erscheinungsdatum im Format YYYY-MM-DD. null wenn nicht erkennbar.
 - page: Seitenangabe als String (z.B. "3", "Wirtschaft 7"). null wenn fehlt.
