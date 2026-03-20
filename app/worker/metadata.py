@@ -30,7 +30,9 @@ null wenn unklar.
 - article_date: Erscheinungsdatum im Format YYYY-MM-DD. null wenn nicht erkennbar.
 - page: Seitenangabe als String (z.B. "3", "Wirtschaft 7"). null wenn fehlt.
 - headline: Hauptschlagzeile des Artikels. Pflichtfeld.
-- summary: Zusammenfassung in 2-3 deutschen Sätzen. Pflichtfeld.
+- summary: Zusammenfassung des Artikelinhalts in 2-3 deutschen Sätzen. Pflichtfeld. \
+Hinweis: "Von X" am Anfang des Textes bezeichnet den Autor des Zeitungsartikels, \
+nicht die Hauptperson oder Buchautor im Artikel.
 - category: Eines von exakt: Politik, Wirtschaft, Kultur, Sport, Ernährung, \
 Wissenschaft, Lokales, International, Reise, Sonstiges
 - tags: Array mit 3-5 relevanten deutschen Stichwörtern
