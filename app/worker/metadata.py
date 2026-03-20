@@ -15,7 +15,7 @@ OLLAMA_HOST  = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
 VALID_CATEGORIES = {
-    "Politik", "Wirtschaft", "Kultur", "Sport",
+    "Politik", "Wirtschaft", "Kultur", "Sport", "Ernährung",
     "Wissenschaft", "Lokales", "International", "Reise", "Sonstiges",
 }
 
@@ -31,7 +31,7 @@ null wenn unklar.
 - page: Seitenangabe als String (z.B. "3", "Wirtschaft 7"). null wenn fehlt.
 - headline: Hauptschlagzeile des Artikels. Pflichtfeld.
 - summary: Zusammenfassung in 2-3 deutschen Sätzen. Pflichtfeld.
-- category: Eines von exakt: Politik, Wirtschaft, Kultur, Sport, \
+- category: Eines von exakt: Politik, Wirtschaft, Kultur, Sport, Ernährung, \
 Wissenschaft, Lokales, International, Reise, Sonstiges
 - tags: Array mit 3-5 relevanten deutschen Stichwörtern
 - locations: Array mit allen Ortsnamen, Städten, Regionen und Ländern die im Artikel \
