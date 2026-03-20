@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.web.routes import articles, admin, places, review, search
+from app.web.routes import articles, admin, books, places, recipes, review, search
 
 _ARCHIVE_DIR = Path(os.getenv("ARCHIVE_DIR", "/app/archive"))
 _STATIC_DIR = Path(__file__).parent / "static"
@@ -21,5 +21,7 @@ app.mount("/archive", StaticFiles(directory=str(_ARCHIVE_DIR)), name="archive")
 app.include_router(search.router)
 app.include_router(articles.router)
 app.include_router(places.router)
+app.include_router(books.router)
+app.include_router(recipes.router)
 app.include_router(review.router)
 app.include_router(admin.router)

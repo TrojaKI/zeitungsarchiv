@@ -71,6 +71,32 @@ CREATE TRIGGER IF NOT EXISTS articles_updated_at AFTER UPDATE ON articles BEGIN
     UPDATE articles SET updated_at = datetime('now') WHERE id = new.id;
 END;
 
+-- Books/publications recommended in articles
+CREATE TABLE IF NOT EXISTS books (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    article_id  INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    title       TEXT,
+    author      TEXT,
+    publisher   TEXT,
+    year        TEXT,
+    pages       TEXT,
+    price       TEXT,
+    isbn        TEXT,
+    description TEXT
+);
+
+-- Recipes published in articles
+CREATE TABLE IF NOT EXISTS recipes (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    article_id   INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    name         TEXT,
+    category     TEXT,
+    servings     TEXT,
+    prep_time    TEXT,
+    ingredients  TEXT,   -- free-text block
+    instructions TEXT    -- free-text block
+);
+
 -- Places extracted from articles (restaurants, hotels, shops, ...)
 CREATE TABLE IF NOT EXISTS places (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

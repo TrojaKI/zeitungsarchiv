@@ -37,6 +37,31 @@ def init_db(db_path: Path = _DEFAULT_DB_PATH) -> None:
         for col, sql in migrations:
             if col not in existing:
                 conn.execute(sql)
+        # Migrate: create books and recipes tables if not yet present
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS books (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                article_id  INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+                title       TEXT,
+                author      TEXT,
+                publisher   TEXT,
+                year        TEXT,
+                pages       TEXT,
+                price       TEXT,
+                isbn        TEXT,
+                description TEXT
+            );
+            CREATE TABLE IF NOT EXISTS recipes (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                article_id   INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+                name         TEXT,
+                category     TEXT,
+                servings     TEXT,
+                prep_time    TEXT,
+                ingredients  TEXT,
+                instructions TEXT
+            );
+        """)
 
 
 def insert_article(article: dict, db_path: Path = _DEFAULT_DB_PATH) -> int:
@@ -319,6 +344,80 @@ def get_places(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
             "SELECT * FROM places WHERE article_id = ? ORDER BY id", (article_id,)
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def insert_books(article_id: int, books: list[dict],
+                 db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Delete existing books for the article and insert the new list."""
+    sql = """INSERT INTO books
+             (article_id, title, author, publisher, year, pages, price, isbn, description)
+             VALUES (:article_id, :title, :author, :publisher, :year, :pages, :price, :isbn, :description)"""
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM books WHERE article_id = ?", (article_id,))
+        for b in books:
+            conn.execute(sql, {"article_id": article_id, **b})
+
+
+def get_books(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
+    """Return all books linked to an article."""
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM books WHERE article_id = ? ORDER BY id", (article_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def update_book(book_id: int, fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Update specific fields of a book entry."""
+    if not fields:
+        return
+    set_clause = ", ".join(f"{k} = :{k}" for k in fields)
+    fields["_id"] = book_id
+    with get_connection(db_path) as conn:
+        conn.execute(f"UPDATE books SET {set_clause} WHERE id = :_id", fields)
+
+
+def delete_book(book_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Delete a single book entry."""
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM books WHERE id = ?", (book_id,))
+
+
+def insert_recipes(article_id: int, recipes: list[dict],
+                   db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Delete existing recipes for the article and insert the new list."""
+    sql = """INSERT INTO recipes
+             (article_id, name, category, servings, prep_time, ingredients, instructions)
+             VALUES (:article_id, :name, :category, :servings, :prep_time, :ingredients, :instructions)"""
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM recipes WHERE article_id = ?", (article_id,))
+        for r in recipes:
+            conn.execute(sql, {"article_id": article_id, **r})
+
+
+def get_recipes(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
+    """Return all recipes linked to an article."""
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM recipes WHERE article_id = ? ORDER BY id", (article_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def update_recipe(recipe_id: int, fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Update specific fields of a recipe entry."""
+    if not fields:
+        return
+    set_clause = ", ".join(f"{k} = :{k}" for k in fields)
+    fields["_id"] = recipe_id
+    with get_connection(db_path) as conn:
+        conn.execute(f"UPDATE recipes SET {set_clause} WHERE id = :_id", fields)
+
+
+def delete_recipe(recipe_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Delete a single recipe entry."""
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
 
 
 def search_places(query: str, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:

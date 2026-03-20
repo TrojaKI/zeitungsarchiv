@@ -53,6 +53,74 @@
     </div>
   </form>
 
+  {% if books %}
+  <section class="books-edit">
+    <h2>Buchtipps</h2>
+    {% for b in books %}
+    <details class="book-edit-card">
+      <summary>{{ b.title or '(kein Titel)' }}{% if b.author %} — {{ b.author }}{% endif %}</summary>
+      <form class="book-form" action="/books/{{ b.id }}" method="post">
+        <input type="hidden" name="article_id" value="{{ article.id }}">
+        <div class="place-grid">
+          <label>Titel<input type="text" name="title" value="{{ b.title or '' }}"></label>
+          <label>Autor<input type="text" name="author" value="{{ b.author or '' }}"></label>
+          <label>Verlag<input type="text" name="publisher" value="{{ b.publisher or '' }}"></label>
+          <label>Jahr<input type="text" name="year" value="{{ b.year or '' }}"></label>
+          <label>Seiten<input type="text" name="pages" value="{{ b.pages or '' }}"></label>
+          <label>Preis<input type="text" name="price" value="{{ b.price or '' }}"></label>
+          <label>ISBN<input type="text" name="isbn" value="{{ b.isbn or '' }}"></label>
+          <label class="full-width">Beschreibung
+            <textarea name="description" rows="2">{{ b.description or '' }}</textarea>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Speichern</button>
+        </div>
+      </form>
+      <form action="/books/{{ b.id }}/delete" method="post" style="display:inline"
+            onsubmit="return confirm('Eintrag löschen?')">
+        <input type="hidden" name="article_id" value="{{ article.id }}">
+        <button type="submit" class="btn-delete">Löschen</button>
+      </form>
+    </details>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if recipes %}
+  <section class="recipes-edit">
+    <h2>Rezepte</h2>
+    {% for r in recipes %}
+    <details class="recipe-edit-card">
+      <summary>{{ r.name or '(kein Name)' }}{% if r.category %} — {{ r.category }}{% endif %}</summary>
+      <form class="recipe-form" action="/recipes/{{ r.id }}" method="post">
+        <input type="hidden" name="article_id" value="{{ article.id }}">
+        <div class="place-grid">
+          <label>Name<input type="text" name="name" value="{{ r.name or '' }}"></label>
+          <label>Kategorie<input type="text" name="category" value="{{ r.category or '' }}"></label>
+          <label>Menge/Portionen<input type="text" name="servings" value="{{ r.servings or '' }}"></label>
+          <label>Zubereitungszeit<input type="text" name="prep_time" value="{{ r.prep_time or '' }}"></label>
+          <label class="full-width">Zutaten
+            <textarea name="ingredients" rows="5">{{ r.ingredients or '' }}</textarea>
+          </label>
+          <label class="full-width">Zubereitung
+            <textarea name="instructions" rows="6">{{ r.instructions or '' }}</textarea>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Speichern</button>
+        </div>
+      </form>
+      <form action="/recipes/{{ r.id }}/delete" method="post" style="display:inline"
+            onsubmit="return confirm('Eintrag löschen?')">
+        <input type="hidden" name="article_id" value="{{ article.id }}">
+        <button type="submit" class="btn-delete">Löschen</button>
+      </form>
+    </details>
+    {% endfor %}
+  </section>
+  {% endif %}
+
   {% if places %}
   <section class="places-edit">
     <h2>Orte &amp; Betriebe</h2>

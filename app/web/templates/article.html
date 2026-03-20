@@ -99,6 +99,52 @@
     </section>
     {% endif %}
 
+    {% if books %}
+    <section class="books">
+      <h2>Buchtipps</h2>
+      {% for b in books %}
+      <div class="book-card">
+        <strong>{{ b.title or '' }}</strong>
+        {% if b.author %} — {{ b.author }}{% endif %}
+        {% if b.publisher or b.year %}
+        <span class="book-meta">
+          {% if b.publisher %}{{ b.publisher }}{% endif %}{% if b.publisher and b.year %},{% endif %}
+          {% if b.year %}{{ b.year }}{% endif %}
+          {% if b.pages %} &middot; {{ b.pages }} Seiten{% endif %}
+          {% if b.price %} &middot; {{ b.price }}{% endif %}
+        </span>
+        {% endif %}
+        {% if b.isbn %}<span class="book-isbn">ISBN {{ b.isbn }}</span>{% endif %}
+        {% if b.description %}<p class="book-description">{{ b.description }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if recipes %}
+    <section class="recipes">
+      <h2>Rezepte</h2>
+      {% for r in recipes %}
+      <div class="recipe-card">
+        <h3>{{ r.name or '' }}</h3>
+        <dl class="recipe-meta">
+          {% if r.category %}<dt>Kategorie</dt><dd>{{ r.category }}</dd>{% endif %}
+          {% if r.servings %}<dt>Menge</dt><dd>{{ r.servings }}</dd>{% endif %}
+          {% if r.prep_time %}<dt>Zubereitungszeit</dt><dd>{{ r.prep_time }}</dd>{% endif %}
+        </dl>
+        {% if r.ingredients %}
+        <h4>Zutaten</h4>
+        <pre class="recipe-ingredients">{{ r.ingredients }}</pre>
+        {% endif %}
+        {% if r.instructions %}
+        <h4>Zubereitung</h4>
+        <pre class="recipe-instructions">{{ r.instructions }}</pre>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
     <details>
       <summary>OCR-Volltext</summary>
       <pre class="ocr-text">{{ article.full_text }}</pre>

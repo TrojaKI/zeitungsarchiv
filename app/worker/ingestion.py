@@ -6,10 +6,12 @@ import shutil
 from datetime import date
 from pathlib import Path
 
-from app.db.database import init_db, insert_article, insert_places
+from app.db.database import init_db, insert_article, insert_books, insert_places, insert_recipes
+from app.worker.books import extract_books
 from app.worker.metadata import extract_metadata
 from app.worker.ocr import process_scan
 from app.worker.places import extract_places
+from app.worker.recipes import extract_recipes
 from app.worker.stitch import stitch_multipart
 
 log = logging.getLogger(__name__)
@@ -132,7 +134,9 @@ def ingest(
     }
 
     # Extract structured place listings (restaurants, hotels, etc.)
-    places = extract_places(ocr_result["full_text"])
+    places  = extract_places(ocr_result["full_text"])
+    books   = extract_books(ocr_result["full_text"])
+    recipes = extract_recipes(ocr_result["full_text"])
 
     try:
         article_id = insert_article(article, db_path)
@@ -141,10 +145,16 @@ def ingest(
         _quarantine(tiff_path, archive_dir, f"DB insert failed: {exc}")
         return None
 
-    # --- step 4: save extracted places ---
+    # --- step 4: save extracted places, books, and recipes ---
     if places:
         insert_places(article_id, places, db_path)
         log.info("Saved %d place(s) for article id=%s", len(places), article_id)
+    if books:
+        insert_books(article_id, books, db_path)
+        log.info("Saved %d book(s) for article id=%s", len(books), article_id)
+    if recipes:
+        insert_recipes(article_id, recipes, db_path)
+        log.info("Saved %d recipe(s) for article id=%s", len(recipes), article_id)
 
     # --- step 5: move original TIFF to archive ---
     dest_dir = archive_dir / tiff_path.stem

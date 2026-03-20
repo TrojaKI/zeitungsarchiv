@@ -7,7 +7,8 @@ from pathlib import Path
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from app.db.database import get_article, get_group_articles, get_places, get_review_count, update_article
+from app.db.database import (get_article, get_books, get_group_articles, get_places,
+                              get_recipes, get_review_count, update_article)
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -38,7 +39,9 @@ async def article_detail(request: Request, article_id: int):
             article["tags"] = json.loads(article["tags"])
         except (json.JSONDecodeError, TypeError):
             article["tags"] = []
-    places = get_places(article_id, _DB)
+    places  = get_places(article_id, _DB)
+    books   = get_books(article_id, _DB)
+    recipes = get_recipes(article_id, _DB)
     # Fetch sibling pages for multi-page articles
     group_pages = (
         get_group_articles(article["article_group"], _DB)
@@ -47,7 +50,8 @@ async def article_detail(request: Request, article_id: int):
     )
     return _templates.TemplateResponse(
         "article.html",
-        _ctx(request, article=article, places=places, group_pages=group_pages),
+        _ctx(request, article=article, places=places, books=books,
+             recipes=recipes, group_pages=group_pages),
     )
 
 
@@ -61,8 +65,13 @@ async def article_edit(request: Request, article_id: int):
             article["tags"] = json.loads(article["tags"])
         except (json.JSONDecodeError, TypeError):
             article["tags"] = []
-    places = get_places(article_id, _DB)
-    return _templates.TemplateResponse("edit.html", _ctx(request, article=article, places=places))
+    places  = get_places(article_id, _DB)
+    books   = get_books(article_id, _DB)
+    recipes = get_recipes(article_id, _DB)
+    return _templates.TemplateResponse(
+        "edit.html",
+        _ctx(request, article=article, places=places, books=books, recipes=recipes),
+    )
 
 
 @router.post("/articles/{article_id}")
