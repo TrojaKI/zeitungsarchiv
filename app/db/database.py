@@ -420,6 +420,42 @@ def delete_recipe(recipe_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
         conn.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
 
 
+def get_all_books(query: str = "", db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
+    """Return all books with article info, optionally filtered by title or author."""
+    params: list = []
+    sql = """
+        SELECT b.*, a.id AS article_id, a.headline, a.article_date, a.newspaper
+        FROM books b JOIN articles a ON a.id = b.article_id
+        WHERE 1=1
+    """
+    if query:
+        sql += " AND (b.title LIKE ? OR b.author LIKE ? OR b.publisher LIKE ?)"
+        q = f"%{query}%"
+        params.extend([q, q, q])
+    sql += " ORDER BY b.author, b.title"
+    with get_connection(db_path) as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_all_recipes(query: str = "", db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
+    """Return all recipes with article info, optionally filtered by name or category."""
+    params: list = []
+    sql = """
+        SELECT r.*, a.id AS article_id, a.headline, a.article_date, a.newspaper
+        FROM recipes r JOIN articles a ON a.id = r.article_id
+        WHERE 1=1
+    """
+    if query:
+        sql += " AND (r.name LIKE ? OR r.category LIKE ?)"
+        q = f"%{query}%"
+        params.extend([q, q])
+    sql += " ORDER BY r.category, r.name"
+    with get_connection(db_path) as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [dict(r) for r in rows]
+
+
 def search_places(query: str, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
     """Search places by name, city, or address (case-insensitive LIKE)."""
     q = f"%{query}%"

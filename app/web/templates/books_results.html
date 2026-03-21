@@ -1,0 +1,29 @@
+{% if books %}
+<p class="places-count">{{ books | length }} Eintrag/Einträge</p>
+<table class="places-table">
+  <thead>
+    <tr>
+      <th>Titel</th><th>Autor</th><th>Verlag</th><th>Jahr</th>
+      <th>Seiten</th><th>Preis</th><th>ISBN</th><th>Artikel</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for b in books %}
+    <tr>
+      <td><strong>{{ b.title or '–' }}</strong>
+        {% if b.description %}<br><small>{{ b.description }}</small>{% endif %}
+      </td>
+      <td>{{ b.author or '–' }}</td>
+      <td>{{ b.publisher or '–' }}</td>
+      <td>{{ b.year or '–' }}</td>
+      <td>{{ b.pages or '–' }}</td>
+      <td>{{ b.price or '–' }}</td>
+      <td>{{ b.isbn or '–' }}</td>
+      <td><a href="/articles/{{ b.article_id }}">{{ b.headline or b.article_id }}</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">Keine Einträge gefunden.</p>
+{% endif %}

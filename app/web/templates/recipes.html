@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Rezepte – Zeitungsarchiv{% endblock %}
+{% block content %}
+<section class="search-box">
+  <form hx-get="/recipes" hx-target="#recipes-results"
+        hx-trigger="submit, input[name='q'] delay:400ms">
+    <div class="search-row">
+      <input type="text" name="q" value="{{ q }}" placeholder="Name oder Kategorie…" autofocus>
+      <button type="submit">Suchen</button>
+    </div>
+  </form>
+</section>
+
+<div id="recipes-results">
+  {% include "recipes_results.html" %}
+</div>
+{% endblock %}

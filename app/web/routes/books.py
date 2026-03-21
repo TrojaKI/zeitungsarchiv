@@ -1,15 +1,29 @@
-"""Books routes: edit/delete individual book recommendation."""
+"""Books routes: list all books, edit/delete individual book recommendation."""
 
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, Form
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 
-from app.db.database import delete_book, update_book
+from app.db.database import delete_book, get_all_books, get_review_count, update_book
+from app.web.templating import templates as _templates
 
 router = APIRouter()
 _DB = Path(os.getenv("DB_PATH", "/app/db/archive.db"))
+
+
+def _ctx(request: Request, **kwargs) -> dict:
+    return {"request": request, "review_count": get_review_count(_DB), **kwargs}
+
+
+@router.get("/books", response_class=HTMLResponse)
+async def books_list(request: Request, q: str = ""):
+    books = get_all_books(query=q, db_path=_DB)
+    ctx = _ctx(request, books=books, q=q)
+    if request.headers.get("hx-request"):
+        return _templates.TemplateResponse("books_results.html", ctx)
+    return _templates.TemplateResponse("books.html", ctx)
 
 
 @router.post("/books/{book_id}")

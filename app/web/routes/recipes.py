@@ -1,15 +1,29 @@
-"""Recipes routes: edit/delete individual recipe."""
+"""Recipes routes: list all recipes, edit/delete individual recipe."""
 
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, Form
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 
-from app.db.database import delete_recipe, update_recipe
+from app.db.database import delete_recipe, get_all_recipes, get_review_count, update_recipe
+from app.web.templating import templates as _templates
 
 router = APIRouter()
 _DB = Path(os.getenv("DB_PATH", "/app/db/archive.db"))
+
+
+def _ctx(request: Request, **kwargs) -> dict:
+    return {"request": request, "review_count": get_review_count(_DB), **kwargs}
+
+
+@router.get("/recipes", response_class=HTMLResponse)
+async def recipes_list(request: Request, q: str = ""):
+    recipes = get_all_recipes(query=q, db_path=_DB)
+    ctx = _ctx(request, recipes=recipes, q=q)
+    if request.headers.get("hx-request"):
+        return _templates.TemplateResponse("recipes_results.html", ctx)
+    return _templates.TemplateResponse("recipes.html", ctx)
 
 
 @router.post("/recipes/{recipe_id}")

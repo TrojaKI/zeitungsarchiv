@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Bücher – Zeitungsarchiv{% endblock %}
+{% block content %}
+<section class="search-box">
+  <form hx-get="/books" hx-target="#books-results"
+        hx-trigger="submit, input[name='q'] delay:400ms">
+    <div class="search-row">
+      <input type="text" name="q" value="{{ q }}" placeholder="Titel, Autor, Verlag…" autofocus>
+      <button type="submit">Suchen</button>
+    </div>
+  </form>
+</section>
+
+<div id="books-results">
+  {% include "books_results.html" %}
+</div>
+{% endblock %}
