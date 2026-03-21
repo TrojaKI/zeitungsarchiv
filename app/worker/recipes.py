@@ -13,10 +13,15 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
 _PROMPT = """\
 Du analysierst den OCR-Text eines eingescannten deutschen Zeitungsartikels.
-Extrahiere alle Rezepte aus dem Text inklusive Zutaten und Zubereitung.
+Extrahiere nur Rezepte, die tatsächlich im Text abgedruckt sind — mit Zutaten \
+und/oder Zubereitungsschritten.
 
-Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder \
-(null wenn nicht vorhanden):
+NICHT extrahieren:
+- Bloße Erwähnungen eines Rezeptnamens ohne Zutaten/Zubereitung
+- Links zu Rezept-Websites
+- Namen von Gerichten ohne Rezeptangaben
+
+Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder (null wenn nicht vorhanden):
 - name: Name des Rezepts (z.B. "Eiweißbrot")
 - category: Kategorie (z.B. "Brot", "Hauptgericht", "Dessert", "Snack")
 - servings: Portionen oder Menge (z.B. "1 Laib", "4 Personen")
@@ -24,7 +29,7 @@ Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder \
 - ingredients: alle Zutaten als zusammenhängender Text, eine Zutat pro Zeile
 - instructions: Zubereitungsschritte als zusammenhängender Text
 
-Wenn keine Rezepte im Text enthalten sind, gib ein leeres Array [] zurück.
+Wenn keine vollständigen Rezepte im Text enthalten sind, gib [] zurück.
 Antworte NUR mit validem JSON ohne Markdown-Backticks.
 
 OCR-Text:

@@ -13,25 +13,57 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
 _PROMPT = """\
 Du analysierst den OCR-Text eines eingescannten deutschen Zeitungsartikels.
-Extrahiere alle Buchtipps, Buchempfehlungen oder vorgestellten Bücher aus dem Text.
+Extrahiere ausschließlich physisch erschienene Bücher, die im Artikel vorgestellt, \
+rezensiert oder empfohlen werden (z.B. "Buch zur Woche", Buchkritiken, Buchvorstellungen).
 
-Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder \
-(null wenn nicht vorhanden):
+Ein Buch muss mindestens eines dieser Merkmale aufweisen: Verlag, Seitenanzahl, Preis oder ISBN.
+
+NICHT als Buch zählen:
+- Rezepte oder Kochtipps (auch wenn sie einen Namen haben)
+- Websites, Online-Shops oder Apps
+- Kochkurse, Workshops oder Veranstaltungen
+- Reiseführer-Markennamen ohne Buchrezension
+
+Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder (null wenn nicht vorhanden):
 - title: Buchtitel
 - author: Autor(en)
 - publisher: Verlag
 - year: Erscheinungsjahr
-- pages: Seitenanzahl
+- pages: Seitenanzahl als Zahl-String (z.B. "432")
 - price: Preis (z.B. "19,90 Euro")
 - isbn: ISBN-Nummer
 - description: kurze Beschreibung oder Bewertung aus dem Artikel (1-2 Sätze)
 
-Wenn keine Bücher im Text empfohlen oder vorgestellt werden, gib ein leeres Array [] zurück.
+Wenn keine Bücher vorgestellt oder rezensiert werden, gib [] zurück.
 Antworte NUR mit validem JSON ohne Markdown-Backticks.
 
 OCR-Text:
 {ocr_text}
 """
+
+
+_BOOK_SECTION_PATTERNS = [
+    "BUCH ZUR WOCHE", "BUCH DER WOCHE", "BUCHTIPP", "BUCHTIPPS",
+    "LESETIPP", "LESETIPPS", "BUCHEMPFEHLUNG", "NEUE BÜCHER",
+]
+
+
+def _extract_book_sections(text: str) -> str:
+    """
+    Extract paragraphs likely to contain book info.
+
+    Looks for known section headers (e.g. "BUCH ZUR WOCHE") and returns
+    the surrounding context. Falls back to the last 1500 chars of the text
+    where box-style book info often appears in scanned layout.
+    """
+    upper = text.upper()
+    for marker in _BOOK_SECTION_PATTERNS:
+        pos = upper.find(marker)
+        if pos != -1:
+            # Return from the marker to end of text (book info follows)
+            return text[pos:]
+    # No explicit section found — return last 1500 chars as fallback
+    return text[-1500:] if len(text) > 1500 else text
 
 
 def extract_books(ocr_text: str,
@@ -44,6 +76,8 @@ def extract_books(ocr_text: str,
     """
     if not ocr_text.strip():
         return []
+
+    ocr_text = _extract_book_sections(ocr_text)
 
     _model = model or OLLAMA_MODEL
     _host  = host  or OLLAMA_HOST
@@ -73,7 +107,16 @@ def extract_books(ocr_text: str,
         if not isinstance(data, list):
             return []
 
-        return [_clean(b) for b in data if isinstance(b, dict)]
+        books = [_clean(b) for b in data if isinstance(b, dict)]
+        # Deduplicate by title to guard against model hallucinating duplicate entries
+        seen: set[str] = set()
+        unique = []
+        for b in books:
+            key = (b.get("title") or "").lower().strip()
+            if key and key not in seen:
+                seen.add(key)
+                unique.append(b)
+        return unique
 
     except Exception as exc:
         log.error("extract_books failed: %s", exc)
