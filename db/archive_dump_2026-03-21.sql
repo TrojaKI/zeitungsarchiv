@@ -185,6 +185,7 @@ CREATE TABLE books (
 );
 INSERT INTO books VALUES(1,12,'Fit & schlank mit Brot','Michaela Axt-Gadermann','Südwest Verlag','2025','176','ca. 21 Euro',NULL,'Das Buch von Ernährungsmedizinerin Michaela Axt-Gadermann und Brotsommelier Johannes Dackweiler erklärt, warum viele Brotsorten sehr gesund sind und welche gesundheitsförderlichen Wirkungen Getreide und seine Bestandteile auf Herzgesundheit, Arterkrankungen, Verdauungskreislauf und andere Gesundheitsaspekte haben. Es enthält Backrezepte für unterschiedliche Bedürfnisse, wie glutenfreie oder histaminarme Brote, sowie Ballaststoffe, Proteine und gesunde Fette. Das Buch bietet auch Tipps zur richtigen Auswahl von Brot und dessen Verwendung in der Ernährung.');
 INSERT INTO books VALUES(4,13,'Il Milione - Die Wunder der Welt','Marco Polo','Manesse Verlag','2024','432','47,50 Euro','null','Marco Polo hat mit diesem Buch versucht, die Welt aus altfranzösischen und lateinischen Quellen zu übersetzen. Die Übersetzung trifft den Kern des Buches, da sie die Grenzen zwischen Bericht und Fabulierung verschwimmen lässt. Das Buch ist eine wertvolle Versuchung, die Leser für Schmunzeln und Verwunderung sorgt.');
+INSERT INTO books VALUES(5,14,'Vegetarisch','Paul Ivić','DK Verlag',NULL,NULL,'42,50 €',NULL,'Rezeptbuch des österreichischen Sternekochs Paul Ivić, u.a. mit einem Rezept für eingelegten Ingwer (Gari).');
 CREATE TABLE recipes (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     article_id   INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
@@ -208,7 +209,7 @@ INSERT INTO recipes VALUES(15,20,'VEGANE KNOBLAUCH-MAYO','Snack','5','10 Minuten
 DELETE FROM sqlite_sequence;
 INSERT INTO sqlite_sequence VALUES('articles',20);
 INSERT INTO sqlite_sequence VALUES('places',44);
-INSERT INTO sqlite_sequence VALUES('books',4);
+INSERT INTO sqlite_sequence VALUES('books',5);
 INSERT INTO sqlite_sequence VALUES('recipes',15);
 CREATE TRIGGER articles_ai AFTER INSERT ON articles BEGIN
     INSERT INTO articles_fts(rowid, headline, summary, full_text, tags)
