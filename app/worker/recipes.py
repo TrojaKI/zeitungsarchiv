@@ -29,16 +29,18 @@ NICHT extrahieren:
 - Links zu Rezept-Websites
 - Namen von Gerichten ohne Rezeptangaben
 
-Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder (null wenn nicht vorhanden):
+Gib IMMER ein JSON-Array zurück — auch wenn nur ein Rezept gefunden wird: [{{...}}]
+Jeder Eintrag hat diese Felder (null wenn nicht vorhanden):
 - name: Name des Rezepts oder Rubriktitel (z.B. "Koch-Inspirationen", "Eiweißbrot")
-- category: Kategorie (z.B. "Brot", "Hauptgericht", "Dessert", "Snack")
+- category: Kategorie (z.B. "Brot", "Hauptgericht", "Dessert", "Snack", "Eingemachtes")
 - servings: Portionen oder Menge (z.B. "1 Laib", "4 Personen")
 - prep_time: Zubereitungszeit (z.B. "30 Minuten", "1 Stunde")
 - ingredients: alle Zutaten als zusammenhängender Text, eine Zutat pro Zeile
 - instructions: Zubereitungsschritte als zusammenhängender Text
 
+Wenn mehrere Rezepte im Text stehen, extrahiere ALLE als separate Einträge im Array.
 Wenn keine vollständigen Rezepte im Text enthalten sind, gib [] zurück.
-Antworte NUR mit validem JSON ohne Markdown-Backticks.
+Antworte NUR mit validem JSON-Array ohne Markdown-Backticks. Kein einzelnes Objekt — immer ein Array.
 
 OCR-Text:
 {ocr_text}
@@ -72,12 +74,14 @@ def extract_recipes(ocr_text: str,
             raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
 
         data = json.loads(raw)
-        # Model sometimes returns {"recipes": [...]} instead of a bare array
+        # Model sometimes wraps the array in an object — find the first list value
         if isinstance(data, dict):
-            for key in ("recipes", "results", "items", "entries"):
-                if isinstance(data.get(key), list):
-                    data = data[key]
-                    break
+            lists = [v for v in data.values() if isinstance(v, list)]
+            if lists:
+                data = lists[0]
+            elif any(k in data for k in ("name", "ingredients", "instructions")):
+                # Single recipe object returned without wrapper — wrap it
+                data = [data]
             else:
                 return []
 

@@ -95,12 +95,11 @@ def extract_books(ocr_text: str,
             raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
 
         data = json.loads(raw)
-        # Model sometimes returns {"books": [...]} instead of a bare array
+        # Model sometimes wraps the array in an object — find the first list value
         if isinstance(data, dict):
-            for key in ("books", "results", "items", "entries"):
-                if isinstance(data.get(key), list):
-                    data = data[key]
-                    break
+            lists = [v for v in data.values() if isinstance(v, list)]
+            if lists:
+                data = lists[0]
             else:
                 return []
 

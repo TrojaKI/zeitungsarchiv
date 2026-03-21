@@ -28,7 +28,13 @@ Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder \
 - phone: Telefonnummer
 - hours: Öffnungszeiten
 - url: Website-Adresse
-- rating: Bewertung wenn im Artikel angegeben ("+", "-", "+/-"), sonst null
+- rating: Bewertung des Betriebs — leite sie aus dem Ton des Textes ab. Das +/- \
+Symbol wird oft als farbige Grafik gedruckt und fehlt im OCR. Mögliche Werte:
+  "+" = klar positiv (nur Lob, Weiterempfehlung, guter Gesamteindruck)
+  "-" = klar negativ (nur Kritik, Enttäuschung, nicht empfehlenswert)
+  "+/-" = gemischt (sowohl Lobendes als auch Kritisches im gleichen Bericht — \
+z.B. gutes Essen aber schlechter Service, oder "Nachbessern wäre gut")
+  null = kein Urteil erkennbar (rein informativer Text ohne Wertung)
 
 Wenn keine solchen Einträge vorhanden sind, gib ein leeres Array [] zurück.
 Antworte NUR mit validem JSON ohne Markdown-Backticks.
@@ -65,12 +71,11 @@ def extract_places(ocr_text: str,
             raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
 
         data = json.loads(raw)
-        # Model sometimes returns {"places": [...]} instead of a bare array
+        # Model sometimes wraps the array in an object — find the first list value
         if isinstance(data, dict):
-            for key in ("places", "results", "items", "entries"):
-                if isinstance(data.get(key), list):
-                    data = data[key]
-                    break
+            lists = [v for v in data.values() if isinstance(v, list)]
+            if lists:
+                data = lists[0]
             else:
                 return []
 

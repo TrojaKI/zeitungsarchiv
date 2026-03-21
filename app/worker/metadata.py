@@ -28,8 +28,13 @@ Felder:
 - newspaper: Name der Zeitung (z.B. "Kurier", "Süddeutsche Zeitung", "Die Zeit"). \
 Nur der Zeitungsname, nicht der Ressort- oder Beilagenname (z.B. "Freizeit", "Wirtschaft"). \
 null wenn unklar.
-- section: Rubrik- oder Beilagenname innerhalb der Zeitung (z.B. "freizeit.at", \
-"Plus/Minus", "Wirtschaft", "Reise"). null wenn nicht erkennbar.
+- section: Rubrik- oder Beilagenname innerhalb der Zeitung. Erkennungshinweise:
+  - "freizeit.at" wenn der Artikel eine Mischung aus Restaurantkritiken, Rezepten \
+und Freizeitthemen enthält, typisch für eine österreichische Wochenend-Freizeitbeilage
+  - "Plus/Minus" wenn der Artikel aus kurzen Lokalkritiken besteht (auch wenn kein \
+solcher Titel im OCR-Text sichtbar ist)
+  - Andere Rubriken wenn ihr Name im Text erkennbar ist (z.B. "Wirtschaft", "Reise")
+  - null wenn nicht erkennbar
 - article_date: Erscheinungsdatum im Format YYYY-MM-DD. null wenn nicht erkennbar.
 - page: Seitenangabe als String (z.B. "3", "Wirtschaft 7"). null wenn fehlt.
 - headline: Hauptschlagzeile des Artikels. Pflichtfeld.
@@ -37,7 +42,10 @@ null wenn unklar.
 Hinweis: "Von X" am Anfang des Textes bezeichnet den Autor des Zeitungsartikels, \
 nicht die Hauptperson oder Buchautor im Artikel.
 - category: Eines von exakt: Politik, Wirtschaft, Kultur, Sport, Ernährung, \
-Wissenschaft, Lokales, International, Reise, Plus/Minus, Sonstiges
+Wissenschaft, Lokales, International, Reise, Plus/Minus, Sonstiges.
+  Wichtig: Verwende "Plus/Minus" wenn der Artikel aus kurzen Restaurantbewertungen \
+besteht — auch wenn kein +/- Symbol im OCR-Text sichtbar ist (es wird oft als \
+farbige Grafik gedruckt und fehlt im OCR).
 - tags: Array mit 3-5 relevanten deutschen Stichwörtern
 - locations: Array mit allen Ortsnamen, Städten, Regionen und Ländern die im Artikel \
 vorkommen. Z.B. ["Wien", "Wachau", "Österreich", "Gardasee", "Italien"]. Leeres Array \
@@ -78,6 +86,10 @@ def _validate(data: dict) -> dict:
     """Validate and sanitize the raw model response dict."""
     if data.get("category") not in VALID_CATEGORIES:
         data["category"] = "Sonstiges"
+
+    # Derive category from section when section is unambiguous
+    if data.get("section") == "Plus/Minus":
+        data["category"] = "Plus/Minus"
 
     if not isinstance(data.get("tags"), list):
         data["tags"] = []
