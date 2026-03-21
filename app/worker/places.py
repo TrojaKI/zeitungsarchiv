@@ -25,7 +25,12 @@ Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder \
 - postal_code: Postleitzahl
 - city: Ort/Stadt — lies direkt aus der Adresse im Text ab; leite die Stadt NICHT \
 aus dem Namen des Betriebs ab (z.B. "Stuttnerhof" liegt in "Bisamberg", nicht in Stuttgart)
-- country: Land (z.B. "Österreich", "Italien", "Deutschland", "Ungarn")
+- country: Land — leite es aus dem Kontext der Adresse oder des Ortsnamens ab, \
+nicht aus dem Namen des Betriebs. Österreichische Orte (z.B. Wien, Graz, Linz, \
+Salzburg, Innsbruck, Eisenstadt, St. Pölten, Klagenfurt, Bregenz sowie alle \
+Gemeinden in NÖ, OÖ, Steiermark, Tirol, Vorarlberg, Burgenland, Kärnten) \
+→ "Österreich". Nur bei eindeutig deutschen oder anderen ausländischen Orten \
+das jeweilige Land angeben.
 - phone: Telefonnummer
 - hours: Öffnungszeiten
 - url: Website-Adresse
