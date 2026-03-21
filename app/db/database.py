@@ -129,6 +129,12 @@ def get_article(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> Optional[d
     return dict(row) if row else None
 
 
+def delete_article(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Delete an article; related books/recipes/places cascade via FK."""
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM articles WHERE id = ?", (article_id,))
+
+
 def search_articles(
     query: str,
     newspaper: Optional[str] = None,

@@ -2,13 +2,14 @@
 
 import json
 import os
+import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from app.db.database import (get_article, get_books, get_group_articles, get_places,
-                              get_recipes, get_review_count, update_article)
+from app.db.database import (delete_article, get_article, get_books, get_group_articles,
+                              get_places, get_recipes, get_review_count, update_article)
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -107,3 +108,17 @@ async def article_update(
         },
     )
     return RedirectResponse(f"/articles/{article_id}", status_code=303)
+
+
+@router.post("/articles/{article_id}/delete")
+async def article_delete(article_id: int):
+    """Delete article, its DB record, and its archive files on disk."""
+    archive_dir = Path(os.getenv("ARCHIVE_DIR", "/app/archive"))
+    article = get_article(article_id, _DB)
+    if article and article.get("image_path"):
+        stem_dir = (archive_dir / article["image_path"]).parent
+        if stem_dir.exists():
+            shutil.rmtree(stem_dir, ignore_errors=True)
+    if article:
+        delete_article(article_id, _DB)
+    return RedirectResponse("/", status_code=303)
