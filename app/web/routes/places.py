@@ -42,6 +42,7 @@ async def place_update(
     phone: str = Form(""),
     hours: str = Form(""),
     url: str = Form(""),
+    rating: str = Form(""),
 ):
     update_place(place_id, {
         "name":        name or None,
@@ -53,6 +54,7 @@ async def place_update(
         "phone":       phone or None,
         "hours":       hours or None,
         "url":         url or None,
+        "rating":      rating or None,
     }, _DB)
     return RedirectResponse(f"/articles/{article_id}/edit", status_code=303)
 

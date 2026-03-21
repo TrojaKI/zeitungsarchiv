@@ -25,7 +25,7 @@ async def index(request: Request):
     return _templates.TemplateResponse(
         "index.html",
         _ctx(request, results=results, q="", newspaper="", category="",
-             date_from="", date_to="", location="", **opts),
+             section="", date_from="", date_to="", location="", sort="date_desc", **opts),
     )
 
 
@@ -35,18 +35,22 @@ async def search(
     q: str = "",
     newspaper: str = "",
     category: str = "",
+    section: str = "",
     date_from: str = "",
     date_to: str = "",
     location: str = "",
+    sort: str = "date_desc",
     offset: int = 0,
 ):
     results = search_full(
         query=q,
         newspaper=newspaper,
         category=category,
+        section=section,
         date_from=date_from,
         date_to=date_to,
         location=location,
+        sort=sort,
         limit=20,
         offset=offset,
         db_path=_DB,
@@ -58,9 +62,11 @@ async def search(
         q=q,
         newspaper=newspaper,
         category=category,
+        section=section,
         date_from=date_from,
         date_to=date_to,
         location=location,
+        sort=sort,
         offset=offset,
         **opts,
     )

@@ -1,17 +1,28 @@
 """FastAPI application factory for Zeitungsarchiv."""
 
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.db.database import init_db
 from app.web.routes import articles, admin, books, places, recipes, review, search
 
 _ARCHIVE_DIR = Path(os.getenv("ARCHIVE_DIR", "/app/archive"))
 _STATIC_DIR = Path(__file__).parent / "static"
+_DB_PATH = Path(os.getenv("DB_PATH", "/app/db/archive.db"))
 
-app = FastAPI(title="Zeitungsarchiv")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Run schema creation and column migrations on startup
+    init_db(_DB_PATH)
+    yield
+
+
+app = FastAPI(title="Zeitungsarchiv", lifespan=lifespan)
 
 # Static files: app CSS/JS and archive images
 app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")

@@ -29,6 +29,9 @@
       {% if article.newspaper %}
         <dt>Zeitung</dt><dd>{{ article.newspaper }}</dd>
       {% endif %}
+      {% if article.section %}
+        <dt>Rubrik</dt><dd>{{ article.section }}</dd>
+      {% endif %}
       {% if article.article_date %}
         <dt>Datum</dt><dd>{{ article.article_date }}</dd>
       {% endif %}
@@ -73,7 +76,7 @@
         <thead>
           <tr>
             <th>Name</th><th>Adresse</th><th>Ort</th>
-            <th>Telefon</th><th>Öffnungszeiten</th><th>Website</th>
+            <th>Telefon</th><th>Öffnungszeiten</th><th>Website</th><th>Wertung</th>
           </tr>
         </thead>
         <tbody>
@@ -92,6 +95,7 @@
               <a href="{{ p.url if p.url.startswith('http') else 'https://' + p.url }}"
                  target="_blank" rel="noopener" class="ext-link">{{ p.url }}</a>
             {% endif %}</td>
+            <td>{{ p.rating or '' }}</td>
           </tr>
           {% endfor %}
         </tbody>

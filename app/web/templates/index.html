@@ -24,11 +24,25 @@
           <option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>
         {% endfor %}
       </select>
+      {% if sections %}
+      <select name="section">
+        <option value="">Alle Rubriken</option>
+        {% for s in sections %}
+          <option value="{{ s }}" {% if s == section %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
       <select name="location">
         <option value="">Alle Orte</option>
         {% for l in locations %}
           <option value="{{ l }}" {% if l == location %}selected{% endif %}>{{ l }}</option>
         {% endfor %}
+      </select>
+      <select name="sort">
+        <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Neueste zuerst</option>
+        <option value="date_asc"  {% if sort == 'date_asc'  %}selected{% endif %}>Älteste zuerst</option>
+        <option value="headline_asc" {% if sort == 'headline_asc' %}selected{% endif %}>Alphabetisch (Titel)</option>
+        <option value="id_desc"   {% if sort == 'id_desc'   %}selected{% endif %}>Zuletzt hinzugefügt</option>
       </select>
       <label>Von <input type="date" name="date_from" value="{{ date_from }}"></label>
       <label>Bis <input type="date" name="date_to" value="{{ date_to }}"></label>

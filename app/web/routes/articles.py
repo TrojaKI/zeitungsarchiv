@@ -79,6 +79,7 @@ async def article_edit(request: Request, article_id: int):
 async def article_update(
     article_id: int,
     newspaper: str = Form(""),
+    section: str = Form(""),
     article_date: str = Form(""),
     page: str = Form(""),
     headline: str = Form(""),
@@ -95,6 +96,7 @@ async def article_update(
         article_id,
         {
             "newspaper": newspaper or None,
+            "section": section or None,
             "article_date": article_date or None,
             "page": page or None,
             "headline": headline,

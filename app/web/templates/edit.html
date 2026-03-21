@@ -18,6 +18,9 @@
     <label>Zeitung
       <input type="text" name="newspaper" value="{{ article.newspaper or '' }}">
     </label>
+    <label>Rubrik / Beilage
+      <input type="text" name="section" value="{{ article.section or '' }}" placeholder="z.B. freizeit.at, Plus/Minus">
+    </label>
     <label>Erscheinungsdatum
       <input type="date" name="article_date" value="{{ article.article_date or '' }}">
     </label>
@@ -26,7 +29,7 @@
     </label>
     <label>Kategorie
       <select name="category">
-        {% for cat in ['Politik','Wirtschaft','Kultur','Sport','Wissenschaft','Lokales','International','Reise','Sonstiges'] %}
+        {% for cat in ['Politik','Wirtschaft','Kultur','Sport','Ernährung','Wissenschaft','Lokales','International','Reise','Plus/Minus','Sonstiges'] %}
           <option value="{{ cat }}" {% if article.category == cat %}selected{% endif %}>{{ cat }}</option>
         {% endfor %}
       </select>
@@ -142,6 +145,14 @@
           <label>Telefon<input type="text" name="phone" value="{{ p.phone or '' }}"></label>
           <label>Öffnungszeiten<input type="text" name="hours" value="{{ p.hours or '' }}"></label>
           <label>Website<input type="text" name="url" value="{{ p.url or '' }}"></label>
+          <label>Wertung
+            <select name="rating">
+              <option value="" {% if not p.rating %}selected{% endif %}>–</option>
+              <option value="+" {% if p.rating == '+' %}selected{% endif %}>+ (positiv)</option>
+              <option value="-" {% if p.rating == '-' %}selected{% endif %}>- (negativ)</option>
+              <option value="+/-" {% if p.rating == '+/-' %}selected{% endif %}>+/- (gemischt)</option>
+            </select>
+          </label>
           <label class="full-width">Beschreibung
             <textarea name="description" rows="2">{{ p.description or '' }}</textarea>
           </label>

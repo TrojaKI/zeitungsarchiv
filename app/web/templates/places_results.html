@@ -4,7 +4,7 @@
   <thead>
     <tr>
       <th>Name</th><th>Adresse</th><th>PLZ / Ort</th><th>Land</th>
-      <th>Telefon</th><th>Öffnungszeiten</th><th>Website</th><th>Artikel</th>
+      <th>Telefon</th><th>Öffnungszeiten</th><th>Website</th><th>Wertung</th><th>Artikel</th>
     </tr>
   </thead>
   <tbody>
@@ -22,6 +22,7 @@
         <a href="{{ p.url if p.url.startswith('http') else 'https://' + p.url }}"
            target="_blank" rel="noopener" class="ext-link">{{ p.url }}</a>
       {% else %}–{% endif %}</td>
+      <td>{{ p.rating or '–' }}</td>
       <td><a href="/articles/{{ p.article_id }}">{{ p.headline or p.article_id }}</a></td>
     </tr>
     {% endfor %}

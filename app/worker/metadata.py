@@ -16,7 +16,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
 VALID_CATEGORIES = {
     "Politik", "Wirtschaft", "Kultur", "Sport", "Ernährung",
-    "Wissenschaft", "Lokales", "International", "Reise", "Sonstiges",
+    "Wissenschaft", "Lokales", "International", "Reise", "Plus/Minus", "Sonstiges",
 }
 
 _PROMPT = """\
@@ -28,6 +28,8 @@ Felder:
 - newspaper: Name der Zeitung (z.B. "Kurier", "Süddeutsche Zeitung", "Die Zeit"). \
 Nur der Zeitungsname, nicht der Ressort- oder Beilagenname (z.B. "Freizeit", "Wirtschaft"). \
 null wenn unklar.
+- section: Rubrik- oder Beilagenname innerhalb der Zeitung (z.B. "freizeit.at", \
+"Plus/Minus", "Wirtschaft", "Reise"). null wenn nicht erkennbar.
 - article_date: Erscheinungsdatum im Format YYYY-MM-DD. null wenn nicht erkennbar.
 - page: Seitenangabe als String (z.B. "3", "Wirtschaft 7"). null wenn fehlt.
 - headline: Hauptschlagzeile des Artikels. Pflichtfeld.
@@ -35,7 +37,7 @@ null wenn unklar.
 Hinweis: "Von X" am Anfang des Textes bezeichnet den Autor des Zeitungsartikels, \
 nicht die Hauptperson oder Buchautor im Artikel.
 - category: Eines von exakt: Politik, Wirtschaft, Kultur, Sport, Ernährung, \
-Wissenschaft, Lokales, International, Reise, Sonstiges
+Wissenschaft, Lokales, International, Reise, Plus/Minus, Sonstiges
 - tags: Array mit 3-5 relevanten deutschen Stichwörtern
 - locations: Array mit allen Ortsnamen, Städten, Regionen und Ländern die im Artikel \
 vorkommen. Z.B. ["Wien", "Wachau", "Österreich", "Gardasee", "Italien"]. Leeres Array \
@@ -51,6 +53,7 @@ OCR-Text (erste 3000 Zeichen):
 
 _FALLBACK: dict = {
     "newspaper": None,
+    "section": None,
     "article_date": None,
     "page": None,
     "headline": "Unbekannt",
@@ -97,6 +100,13 @@ def _validate(data: dict) -> dict:
 
     if not isinstance(data.get("summary"), str):
         data["summary"] = ""
+
+    # Normalize section: must be a non-empty string or None
+    section = data.get("section")
+    if section is not None and not (isinstance(section, str) and section.strip()):
+        data["section"] = None
+    elif isinstance(section, str):
+        data["section"] = section.strip() or None
 
     return data
 

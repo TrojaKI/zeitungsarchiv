@@ -28,6 +28,7 @@ Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder \
 - phone: Telefonnummer
 - hours: Öffnungszeiten
 - url: Website-Adresse
+- rating: Bewertung wenn im Artikel angegeben ("+", "-", "+/-"), sonst null
 
 Wenn keine solchen Einträge vorhanden sind, gib ein leeres Array [] zurück.
 Antworte NUR mit validem JSON ohne Markdown-Backticks.
@@ -86,5 +87,5 @@ def extract_places(ocr_text: str,
 def _clean(p: dict) -> dict:
     """Ensure all expected fields are present, strip whitespace."""
     fields = ("name", "description", "address", "postal_code",
-              "city", "country", "phone", "hours", "url")
+              "city", "country", "phone", "hours", "url", "rating")
     return {f: (str(p[f]).strip() if p.get(f) else None) for f in fields}

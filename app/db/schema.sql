@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS articles (
 
     -- Metadata (automatic or manual)
     newspaper       TEXT,                   -- e.g. "Kurier"
+    section         TEXT,                   -- supplement/section name (e.g. "freizeit.at", "Plus/Minus")
     article_date    TEXT,                   -- publication date of the article
     page            TEXT,                   -- page number (optional)
     headline        TEXT,                   -- article headline
@@ -109,5 +110,6 @@ CREATE TABLE IF NOT EXISTS places (
     country     TEXT,           -- e.g. "Österreich", "Italien"
     phone       TEXT,           -- e.g. "02632/8244"
     hours       TEXT,           -- e.g. "Mi-Sa 11-21, So 11-20"
-    url         TEXT            -- e.g. "www.apfelbauer.at"
+    url         TEXT,           -- e.g. "www.apfelbauer.at"
+    rating      TEXT            -- e.g. "+", "-", "+/-"
 );

@@ -33,10 +33,15 @@ def init_db(db_path: Path = _DEFAULT_DB_PATH) -> None:
             ("urls", "ALTER TABLE articles ADD COLUMN urls TEXT"),
             ("article_group", "ALTER TABLE articles ADD COLUMN article_group TEXT"),
             ("page_number", "ALTER TABLE articles ADD COLUMN page_number INTEGER"),
+            ("section", "ALTER TABLE articles ADD COLUMN section TEXT"),
         ]
         for col, sql in migrations:
             if col not in existing:
                 conn.execute(sql)
+        # Migrate places table: add rating column if missing
+        places_cols = {row[1] for row in conn.execute("PRAGMA table_info(places)")}
+        if "rating" not in places_cols:
+            conn.execute("ALTER TABLE places ADD COLUMN rating TEXT")
         # Migrate: create books and recipes tables if not yet present
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS books (
@@ -68,14 +73,14 @@ def insert_article(article: dict, db_path: Path = _DEFAULT_DB_PATH) -> int:
     """Insert a new article and return its id."""
     sql = """
         INSERT INTO articles (
-            filename, scan_date, newspaper, article_date, page,
+            filename, scan_date, newspaper, section, article_date, page,
             headline, summary, category, tags,
             full_text, image_path, thumb_path,
             ocr_confidence, needs_review, meta_source,
             locations, urls,
             article_group, page_number
         ) VALUES (
-            :filename, :scan_date, :newspaper, :article_date, :page,
+            :filename, :scan_date, :newspaper, :section, :article_date, :page,
             :headline, :summary, :category, :tags,
             :full_text, :image_path, :thumb_path,
             :ocr_confidence, :needs_review, :meta_source,
@@ -88,6 +93,7 @@ def insert_article(article: dict, db_path: Path = _DEFAULT_DB_PATH) -> int:
     for field in ("tags", "locations", "urls"):
         if isinstance(data.get(field), list):
             data[field] = json.dumps(data[field], ensure_ascii=False)
+    data.setdefault("section", None)
     data.setdefault("locations", None)
     data.setdefault("urls", None)
     data.setdefault("article_group", None)
@@ -182,10 +188,12 @@ def search_full(
     query: str = "",
     newspaper: str = "",
     category: str = "",
+    section: str = "",
     date_from: str = "",
     date_to: str = "",
     location: str = "",
     needs_review: Optional[bool] = None,
+    sort: str = "date_desc",
     limit: int = 20,
     offset: int = 0,
     db_path: Path = _DEFAULT_DB_PATH,
@@ -218,6 +226,9 @@ def search_full(
     if category:
         sql += f" {prefix}category = ?"
         params.append(category)
+    if section:
+        sql += f" {prefix}section = ?"
+        params.append(section)
     if date_from:
         sql += f" {prefix}article_date >= ?"
         params.append(date_from)
@@ -233,8 +244,15 @@ def search_full(
         sql += f' AND {loc_col} LIKE ?'
         params.append(f'%"{location}"%')
 
-    order_col = "a.article_date" if q else "article_date"
-    sql += f" ORDER BY {order_col} DESC LIMIT ? OFFSET ?"
+    _sort_map = {
+        "date_desc":    ("a.article_date", "article_date", "DESC"),
+        "date_asc":     ("a.article_date", "article_date", "ASC"),
+        "headline_asc": ("a.headline",     "headline",     "ASC"),
+        "id_desc":      ("a.id",           "id",           "DESC"),
+    }
+    fts_col, plain_col, direction = _sort_map.get(sort, _sort_map["date_desc"])
+    order_col = fts_col if q else plain_col
+    sql += f" ORDER BY {order_col} {direction} LIMIT ? OFFSET ?"
     params.extend([limit, offset])
 
     with get_connection(db_path) as conn:
@@ -334,13 +352,14 @@ def insert_places(article_id: int, places: list[dict],
     """Delete existing places for the article and insert the new list."""
     sql = """INSERT INTO places
              (article_id, name, description, address, postal_code,
-              city, country, phone, hours, url)
+              city, country, phone, hours, url, rating)
              VALUES (:article_id, :name, :description, :address, :postal_code,
-                     :city, :country, :phone, :hours, :url)"""
+                     :city, :country, :phone, :hours, :url, :rating)"""
     with get_connection(db_path) as conn:
         conn.execute("DELETE FROM places WHERE article_id = ?", (article_id,))
         for p in places:
-            conn.execute(sql, {"article_id": article_id, **p})
+            row = {"article_id": article_id, "rating": None, **p}
+            conn.execute(sql, row)
 
 
 def get_places(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
@@ -492,6 +511,12 @@ def get_filter_options(db_path: Path = _DEFAULT_DB_PATH) -> dict:
                 "WHERE category IS NOT NULL ORDER BY category"
             ).fetchall()
         ]
+        sections = [
+            r[0] for r in conn.execute(
+                "SELECT DISTINCT section FROM articles "
+                "WHERE section IS NOT NULL ORDER BY section"
+            ).fetchall()
+        ]
         # Parse all locations JSON arrays and collect distinct values
         raw_locs = conn.execute(
             "SELECT locations FROM articles WHERE locations IS NOT NULL AND locations != '[]'"
@@ -508,5 +533,6 @@ def get_filter_options(db_path: Path = _DEFAULT_DB_PATH) -> dict:
     return {
         "newspapers": newspapers,
         "categories": categories,
+        "sections": sections,
         "locations": sorted(all_locations),
     }

@@ -13,8 +13,16 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
 _PROMPT = """\
 Du analysierst den OCR-Text eines eingescannten deutschen Zeitungsartikels.
-Extrahiere nur Rezepte, die tatsächlich im Text abgedruckt sind — mit Zutaten \
+Extrahiere alle Rezepte, die tatsächlich im Text abgedruckt sind — mit Zutaten \
 und/oder Zubereitungsschritten.
+
+Wichtig für den Rezeptnamen (name):
+- Verwende als name den Rubriktitel oder die Abschnittsüberschrift, die direkt \
+über den Zutaten oder der Zubereitung steht (z.B. "Koch-Inspirationen", "Kinderleicht", \
+"Eiweißbrot", "Sommersalat").
+- Wenn unter einer Überschrift ein konkreter Gerichtname steht, verwende den \
+Gerichtnamen als name.
+- Nutze niemals generische Texte wie "Rezept 1" oder "Unbekannt".
 
 NICHT extrahieren:
 - Bloße Erwähnungen eines Rezeptnamens ohne Zutaten/Zubereitung
@@ -22,7 +30,7 @@ NICHT extrahieren:
 - Namen von Gerichten ohne Rezeptangaben
 
 Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder (null wenn nicht vorhanden):
-- name: Name des Rezepts (z.B. "Eiweißbrot")
+- name: Name des Rezepts oder Rubriktitel (z.B. "Koch-Inspirationen", "Eiweißbrot")
 - category: Kategorie (z.B. "Brot", "Hauptgericht", "Dessert", "Snack")
 - servings: Portionen oder Menge (z.B. "1 Laib", "4 Personen")
 - prep_time: Zubereitungszeit (z.B. "30 Minuten", "1 Stunde")
