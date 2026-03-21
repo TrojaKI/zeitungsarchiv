@@ -2,14 +2,10 @@
 
 import json
 import logging
-import os
 
-import ollama
+from app.llm.provider import chat_json
 
 log = logging.getLogger(__name__)
-
-OLLAMA_HOST  = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
 _PROMPT = """\
 Du analysierst den OCR-Text eines eingescannten deutschen Zeitungsartikels.
@@ -66,11 +62,9 @@ def _extract_book_sections(text: str) -> str:
     return text[-1500:] if len(text) > 1500 else text
 
 
-def extract_books(ocr_text: str,
-                  model: str | None = None,
-                  host: str | None = None) -> list[dict]:
+def extract_books(ocr_text: str) -> list[dict]:
     """
-    Extract structured book recommendations from article OCR text via Ollama.
+    Extract structured book recommendations from article OCR text via the configured LLM provider.
 
     Returns a list of book dicts. Returns [] on empty text or any error.
     """
@@ -79,17 +73,8 @@ def extract_books(ocr_text: str,
 
     ocr_text = _extract_book_sections(ocr_text)
 
-    _model = model or OLLAMA_MODEL
-    _host  = host  or OLLAMA_HOST
-
     try:
-        client   = ollama.Client(host=_host)
-        response = client.chat(
-            model=_model,
-            messages=[{"role": "user", "content": _PROMPT.format(ocr_text=ocr_text)}],
-            format="json",
-        )
-        raw = response.message.content.strip()
+        raw = chat_json(_PROMPT.format(ocr_text=ocr_text)).strip()
         # Strip accidental markdown fences
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]

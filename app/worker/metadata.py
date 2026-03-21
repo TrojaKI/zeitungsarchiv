@@ -2,17 +2,12 @@
 
 import json
 import logging
-import os
 import re
 from datetime import datetime
 
-import ollama
+from app.llm.provider import chat_json
 
 log = logging.getLogger(__name__)
-
-# Configurable via environment variables
-OLLAMA_HOST  = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
 VALID_CATEGORIES = {
     "Politik", "Wirtschaft", "Kultur", "Sport", "Ernährung",
@@ -144,40 +139,29 @@ def _parse_json(raw: str) -> dict | None:
         return None
 
 
-def extract_metadata(ocr_text: str,
-                     model: str | None = None,
-                     host: str | None = None) -> dict:
+def extract_metadata(ocr_text: str) -> dict:
     """
-    Extract structured metadata from OCR text using a local Ollama model.
+    Extract structured metadata from OCR text via the configured LLM provider.
 
-    Uses format='json' to request structured output.
-    Falls back to _FALLBACK on any error — never raises.
+    Falls back to _FALLBACK on any error -- never raises.
     """
     if not ocr_text.strip():
         log.warning("extract_metadata: empty OCR text, returning fallback")
         return dict(_FALLBACK)
 
-    _model = model or OLLAMA_MODEL
-    _host  = host  or OLLAMA_HOST
     prompt = _PROMPT.format(ocr_text=ocr_text[:3000])
 
     try:
-        client   = ollama.Client(host=_host)
-        response = client.chat(
-            model=_model,
-            messages=[{"role": "user", "content": prompt}],
-            format="json",
-        )
-        raw  = response.message.content
+        raw  = chat_json(prompt)
         data = _parse_json(raw)
 
         if data is None:
             log.error("extract_metadata: invalid JSON from model, returning fallback\nRaw: %s", raw[:200])
             return dict(_FALLBACK)
 
-        log.info("Ollama metadata extracted (model=%s)", _model)
+        log.info("Metadata extracted successfully")
         return _validate(data, ocr_text=ocr_text)
 
     except Exception as exc:
-        log.error("extract_metadata: Ollama error: %s", exc)
+        log.error("extract_metadata: LLM error: %s", exc)
         return dict(_FALLBACK)
