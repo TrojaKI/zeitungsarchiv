@@ -121,6 +121,7 @@ def ingest(
         "page": metadata.get("page"),
         "headline": metadata.get("headline"),
         "summary": metadata.get("summary"),
+        "section": metadata.get("section"),
         "category": metadata.get("category"),
         "tags": metadata.get("tags", []),
         "full_text": ocr_result["full_text"],

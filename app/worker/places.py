@@ -23,7 +23,8 @@ Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder \
 - description: kurze Beschreibung aus dem Artikel (1-2 Sätze)
 - address: Straße und Hausnummer
 - postal_code: Postleitzahl
-- city: Ort/Stadt
+- city: Ort/Stadt — lies direkt aus der Adresse im Text ab; leite die Stadt NICHT \
+aus dem Namen des Betriebs ab (z.B. "Stuttnerhof" liegt in "Bisamberg", nicht in Stuttgart)
 - country: Land (z.B. "Österreich", "Italien", "Deutschland", "Ungarn")
 - phone: Telefonnummer
 - hours: Öffnungszeiten

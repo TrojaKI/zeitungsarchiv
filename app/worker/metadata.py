@@ -29,10 +29,11 @@ Felder:
 Nur der Zeitungsname, nicht der Ressort- oder Beilagenname (z.B. "Freizeit", "Wirtschaft"). \
 null wenn unklar.
 - section: Rubrik- oder Beilagenname innerhalb der Zeitung. Erkennungshinweise:
+  - "Plus/Minus" wenn die Wörter "Plus" und "Minus" im OCR-Text vorkommen \
+(in beliebiger Schreibweise: "Plus & MINUS", "PLUS/MINUS", "plus/minus" usw.), \
+ODER wenn der Artikel aus kurzen positiven/negativen Lokalkritiken besteht
   - "freizeit.at" wenn der Artikel eine Mischung aus Restaurantkritiken, Rezepten \
 und Freizeitthemen enthält, typisch für eine österreichische Wochenend-Freizeitbeilage
-  - "Plus/Minus" wenn der Artikel aus kurzen Lokalkritiken besteht (auch wenn kein \
-solcher Titel im OCR-Text sichtbar ist)
   - Andere Rubriken wenn ihr Name im Text erkennbar ist (z.B. "Wirtschaft", "Reise")
   - null wenn nicht erkennbar
 - article_date: Erscheinungsdatum im Format YYYY-MM-DD. null wenn nicht erkennbar.
@@ -82,14 +83,22 @@ def _is_valid_date(value: str) -> bool:
         return False
 
 
-def _validate(data: dict) -> dict:
-    """Validate and sanitize the raw model response dict."""
-    if data.get("category") not in VALID_CATEGORIES:
-        data["category"] = "Sonstiges"
+_PLUS_MINUS_RE = re.compile(r"\bplus\s*[&/]\s*minus\b", re.IGNORECASE)
 
-    # Derive category from section when section is unambiguous
-    if data.get("section") == "Plus/Minus":
+
+def _validate(data: dict, ocr_text: str = "") -> dict:
+    """Validate and sanitize the raw model response dict."""
+    # Deterministic override: if "Plus & Minus" / "Plus/Minus" appears in OCR text,
+    # force section and category regardless of what the model returned
+    if ocr_text and _PLUS_MINUS_RE.search(ocr_text):
+        data["section"] = "Plus/Minus"
         data["category"] = "Plus/Minus"
+    else:
+        if data.get("category") not in VALID_CATEGORIES:
+            data["category"] = "Sonstiges"
+        # Derive category from section when section is unambiguous
+        if data.get("section") == "Plus/Minus":
+            data["category"] = "Plus/Minus"
 
     if not isinstance(data.get("tags"), list):
         data["tags"] = []
@@ -167,7 +176,7 @@ def extract_metadata(ocr_text: str,
             return dict(_FALLBACK)
 
         log.info("Ollama metadata extracted (model=%s)", _model)
-        return _validate(data)
+        return _validate(data, ocr_text=ocr_text)
 
     except Exception as exc:
         log.error("extract_metadata: Ollama error: %s", exc)
