@@ -52,4 +52,19 @@
   <a href="/export?fmt=csv" class="btn-secondary">Export CSV</a>
   <a href="/export?fmt=json" class="btn-secondary">Export JSON</a>
 </div>
+
+<section class="inbox-section">
+  <h2>Inbox verarbeiten</h2>
+  <p>Alle TIFF-Dateien im Inbox-Verzeichnis manuell einlesen und verarbeiten.</p>
+  <button class="btn-primary"
+          hx-post="/process"
+          hx-target="#process-result"
+          hx-swap="innerHTML"
+          hx-indicator="#process-spinner"
+          hx-disabled-elt="this">
+    Inbox jetzt verarbeiten
+  </button>
+  <span id="process-spinner" class="htmx-indicator"> ⏳ Verarbeite…</span>
+  <div id="process-result"></div>
+</section>
 {% endblock %}

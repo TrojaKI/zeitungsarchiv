@@ -27,13 +27,20 @@ async def stats(request: Request):
     )
 
 
-@router.post("/process", response_class=JSONResponse)
-async def process_inbox():
+@router.post("/process")
+async def process_inbox(request: Request):
     """Manually trigger ingestion of all TIFFs currently in the inbox."""
     from app.worker.ingestion import ingest_directory
 
     ids = ingest_directory(_INBOX, _ARCHIVE, _DB)
-    return {"processed": len(ids), "ids": ids}
+    count = len(ids)
+    if request.headers.get("hx-request"):
+        if count:
+            msg = f'<p class="process-ok">✓ {count} Datei(en) verarbeitet (IDs: {", ".join(str(i) for i in ids)}).</p>'
+        else:
+            msg = '<p class="process-empty">Keine neuen Dateien in der Inbox gefunden.</p>'
+        return HTMLResponse(msg)
+    return JSONResponse({"processed": count, "ids": ids})
 
 
 @router.get("/export")
