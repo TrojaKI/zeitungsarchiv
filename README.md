@@ -215,6 +215,9 @@ Die WebApp ist unter **http://localhost:8000** erreichbar und bietet folgende Be
 | `/recipes` | Alle extrahierten Rezepte |
 | `/stats` | Statistiken, Export (CSV/JSON/SQL), Inbox-Trigger, Geocodierung |
 
+> **Hinweis:** Die WebApp lädt Schriften (Playfair Display, DM Sans) von Google Fonts.
+> Ohne Internetverbindung werden automatisch System-Fallback-Schriften verwendet.
+
 ---
 
 ## CLI-Befehle
