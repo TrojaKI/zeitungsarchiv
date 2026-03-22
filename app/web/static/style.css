@@ -24,6 +24,19 @@ nav { display: flex; gap: 1.25rem; }
 nav a { color: #ccc; text-decoration: none; font-size: .9rem; }
 nav a:hover { color: #fff; }
 
+/* ── Article page navigation ── */
+.page-nav { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.page-nav-item {
+  padding: .25rem .65rem;
+  background: #e8e8e8;
+  color: #222;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: .85rem;
+}
+.page-nav-item:hover { background: #d0d0d0; color: #222; }
+.page-nav-item.active { background: #2b5da4; color: #fff; font-weight: 600; }
+
 /* ── Layout ── */
 main { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
 h1 { font-size: 1.4rem; margin-bottom: 1rem; }

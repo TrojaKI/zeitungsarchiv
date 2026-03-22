@@ -7,7 +7,7 @@
              alt="Vorschau {{ a.headline }}" class="thumb">
       {% endif %}
       <div class="result-info">
-        <a href="/articles/{{ a.id }}" class="headline">{{ a.headline or '(keine Schlagzeile)' }}</a>
+        <a href="/articles/{{ a.id }}" class="headline">{{ a.display_headline or '(keine Schlagzeile)' }}</a>
         <div class="meta">
           {% if a.newspaper %}<span>{{ a.newspaper }}</span>{% endif %}
           {% if a.article_date %}<span>{{ a.article_date }}</span>{% endif %}

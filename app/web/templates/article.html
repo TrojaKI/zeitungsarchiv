@@ -1,5 +1,16 @@
 {% extends "base.html" %}
-{% block title %}{{ article.headline }} – Zeitungsarchiv{% endblock %}
+{% block title %}
+  {% if group_pages and article.page_number and article.page_number > 1 %}
+    {% set page1 = group_pages | selectattr('page_number', 'equalto', 1) | first %}
+    {% if page1 and page1.headline %}
+      {{ page1.headline }} - Seite {{ article.page_number }} – Zeitungsarchiv
+    {% else %}
+      {{ article.headline }} – Zeitungsarchiv
+    {% endif %}
+  {% else %}
+    {{ article.headline }} – Zeitungsarchiv
+  {% endif %}
+{% endblock %}
 {% block content %}
 <div class="article-layout">
   <aside class="article-image">
@@ -23,7 +34,12 @@
     </nav>
     {% endif %}
 
-    <h1>{{ article.headline }}</h1>
+    {% if group_pages and article.page_number and article.page_number > 1 %}
+      {% set page1 = group_pages | selectattr('page_number', 'equalto', 1) | first %}
+      <h1>{{ (page1.headline if page1 and page1.headline else article.headline) }} - Seite {{ article.page_number }}</h1>
+    {% else %}
+      <h1>{{ article.headline }}</h1>
+    {% endif %}
 
     <dl class="metadata">
       {% if article.newspaper %}
