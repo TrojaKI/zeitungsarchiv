@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from app.db.database import get_places_without_coords, get_review_count, get_stats, search_full
@@ -29,20 +29,28 @@ async def stats(request: Request):
     )
 
 
+def _run_ingest():
+    """Background task: ingest all TIFFs in inbox."""
+    from app.worker.ingestion import ingest_directory
+    ingest_directory(_INBOX, _ARCHIVE, _DB)
+
+
 @router.post("/process")
-async def process_inbox(request: Request):
-    """Manually trigger ingestion of all TIFFs currently in the inbox."""
+async def process_inbox(request: Request, background_tasks: BackgroundTasks):
+    """Queue ingestion of all TIFFs in inbox and return immediately."""
     from app.worker.ingestion import ingest_directory
 
-    ids = ingest_directory(_INBOX, _ARCHIVE, _DB)
-    count = len(ids)
+    tiffs = list(_INBOX.glob("*.tif")) + list(_INBOX.glob("*.tiff"))
+    count = len(tiffs)
+    if count == 0:
+        msg = '<p class="process-empty">Keine neuen Dateien in der Inbox gefunden.</p>'
+        return HTMLResponse(msg) if request.headers.get("hx-request") else JSONResponse({"queued": 0})
+
+    background_tasks.add_task(_run_ingest)
     if request.headers.get("hx-request"):
-        if count:
-            msg = f'<p class="process-ok">✓ {count} Datei(en) verarbeitet (IDs: {", ".join(str(i) for i in ids)}).</p>'
-        else:
-            msg = '<p class="process-empty">Keine neuen Dateien in der Inbox gefunden.</p>'
+        msg = f'<p class="process-ok">✓ {count} Datei(en) werden im Hintergrund verarbeitet…</p>'
         return HTMLResponse(msg)
-    return JSONResponse({"processed": count, "ids": ids})
+    return JSONResponse({"queued": count})
 
 
 @router.post("/geocode")

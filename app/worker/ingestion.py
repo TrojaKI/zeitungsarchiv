@@ -37,6 +37,10 @@ def group_multipart_scans(
     standalone: list[Path] = []
 
     for tiff in tiffs:
+        # _pNN files are individual pages — never stitch, always ingest directly
+        if _PAGE_RE.match(tiff.stem):
+            standalone.append(tiff)
+            continue
         m = _PART_RE.match(tiff.stem)
         if m:
             prefix, idx = m.group(1), int(m.group(2))
