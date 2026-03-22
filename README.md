@@ -206,7 +206,7 @@ Die WebApp ist unter **http://localhost:8000** erreichbar und bietet folgende Be
 | `/places` | Alle extrahierten Orte — Listenansicht und interaktive Karte |
 | `/books` | Alle extrahierten Buchempfehlungen |
 | `/recipes` | Alle extrahierten Rezepte |
-| `/stats` | Statistiken, Export (CSV/JSON), Inbox-Trigger, Geocodierung |
+| `/stats` | Statistiken, Export (CSV/JSON/SQL), Inbox-Trigger, Geocodierung |
 
 ---
 
@@ -230,6 +230,14 @@ zeitungsarchiv stats
 # Export
 zeitungsarchiv export --format csv --output archiv.csv
 zeitungsarchiv export --format json --output archiv.json
+zeitungsarchiv export --format sql --output archiv.sql
+
+# Datenbank-Backup (sicher auch bei laufendem Webserver)
+zeitungsarchiv backup
+zeitungsarchiv backup --output /pfad/zum/backup.db
+
+# Orte geocodieren (Nominatim/OSM)
+zeitungsarchiv geocode
 
 # WebApp starten (ohne Docker)
 zeitungsarchiv serve
