@@ -105,15 +105,32 @@ def stats():
 
 @cli.command()
 @click.option("--format", "fmt", default="csv",
-              type=click.Choice(["csv", "json"]), show_default=True)
+              type=click.Choice(["csv", "json", "sql"]), show_default=True)
 @click.option("--output", "-o", default=None, help="Output file (default: stdout)")
 def export(fmt: str, output: str | None):
-    """Export all articles as CSV or JSON."""
+    """Export all articles as CSV, JSON, or SQL dump."""
     import csv
-    import io
+    import sqlite3
     import sys
 
     from app.db.database import search_full
+
+    if fmt == "sql":
+        if not _DB.exists():
+            click.echo(f"Database not found: {_DB}", err=True)
+            raise SystemExit(1)
+        con = sqlite3.connect(_DB)
+        out = open(output, "w", encoding="utf-8") if output else sys.stdout
+        try:
+            for line in con.iterdump():
+                out.write(line + "\n")
+        finally:
+            con.close()
+            if output:
+                out.close()
+        if output:
+            click.echo(f"SQL dump written to {output}")
+        return
 
     articles = search_full(limit=100_000, db_path=_DB)
     out = open(output, "w", encoding="utf-8") if output else sys.stdout
@@ -136,6 +153,38 @@ def export(fmt: str, output: str | None):
 
     if output:
         click.echo(f"Exported {len(articles)} article(s) to {output}")
+
+
+@cli.command()
+@click.option("--output", "-o", default=None,
+              help="Destination path (default: db/archive_backup_YYYYMMDD_HHMMSS.db)")
+def backup(output: str | None):
+    """Create a timestamped backup of the SQLite database."""
+    import sqlite3
+    from datetime import datetime
+
+    src = _DB
+    if not src.exists():
+        click.echo(f"Database not found: {src}", err=True)
+        raise SystemExit(1)
+
+    if output:
+        dest = Path(output)
+    else:
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        dest = src.parent / f"archive_backup_{stamp}.db"
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    src_con = sqlite3.connect(src)
+    dst_con = sqlite3.connect(dest)
+    with dst_con:
+        src_con.backup(dst_con)
+    dst_con.close()
+    src_con.close()
+
+    size_kb = dest.stat().st_size // 1024
+    click.echo(f"Backup written to {dest}  ({size_kb} KB)")
 
 
 @cli.command()
