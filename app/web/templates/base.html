@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Zeitungsarchiv{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
   <script src="/static/htmx.min.js"></script>
   <link rel="stylesheet" href="/static/style.css">
   {% block head %}{% endblock %}
@@ -12,15 +15,15 @@
   <header>
     <a href="/" class="brand">Zeitungsarchiv</a>
     <nav>
-      <a href="/">Suche</a>
-      <a href="/places">Adressen</a>
-      <a href="/books">Bücher</a>
-      <a href="/recipes">Rezepte</a>
-      <a href="/review">
+      <a href="/" {% if request.url.path == '/' %}class="active"{% endif %}>Suche</a>
+      <a href="/places" {% if request.url.path.startswith('/places') %}class="active"{% endif %}>Adressen</a>
+      <a href="/books" {% if request.url.path.startswith('/books') %}class="active"{% endif %}>Bücher</a>
+      <a href="/recipes" {% if request.url.path.startswith('/recipes') %}class="active"{% endif %}>Rezepte</a>
+      <a href="/review" {% if request.url.path.startswith('/review') %}class="active"{% endif %}>
         Review
         {% if review_count %}<span class="badge">{{ review_count }}</span>{% endif %}
       </a>
-      <a href="/stats">Statistiken</a>
+      <a href="/stats" {% if request.url.path.startswith('/stats') %}class="active"{% endif %}>Statistiken</a>
     </nav>
   </header>
   <main>
