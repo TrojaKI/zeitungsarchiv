@@ -111,5 +111,7 @@ CREATE TABLE IF NOT EXISTS places (
     phone       TEXT,           -- e.g. "02632/8244"
     hours       TEXT,           -- e.g. "Mi-Sa 11-21, So 11-20"
     url         TEXT,           -- e.g. "www.apfelbauer.at"
-    rating      TEXT            -- e.g. "+", "-", "+/-"
+    rating      TEXT,           -- e.g. "+", "-", "+/-"
+    lat         REAL,           -- WGS84 latitude (from Nominatim geocoding)
+    lng         REAL            -- WGS84 longitude (from Nominatim geocoding)
 );

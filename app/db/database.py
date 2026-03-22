@@ -38,10 +38,14 @@ def init_db(db_path: Path = _DEFAULT_DB_PATH) -> None:
         for col, sql in migrations:
             if col not in existing:
                 conn.execute(sql)
-        # Migrate places table: add rating column if missing
+        # Migrate places table: add missing columns
         places_cols = {row[1] for row in conn.execute("PRAGMA table_info(places)")}
         if "rating" not in places_cols:
             conn.execute("ALTER TABLE places ADD COLUMN rating TEXT")
+        if "lat" not in places_cols:
+            conn.execute("ALTER TABLE places ADD COLUMN lat REAL")
+        if "lng" not in places_cols:
+            conn.execute("ALTER TABLE places ADD COLUMN lng REAL")
         # Migrate: create books and recipes tables if not yet present
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS books (
@@ -268,6 +272,38 @@ def update_place(place_id: int, fields: dict, db_path: Path = _DEFAULT_DB_PATH) 
     fields["_id"] = place_id
     with get_connection(db_path) as conn:
         conn.execute(f"UPDATE places SET {set_clause} WHERE id = :_id", fields)
+
+
+def update_place_coords(place_id: int, lat: float, lng: float,
+                        db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Store geocoded coordinates for a place."""
+    with get_connection(db_path) as conn:
+        conn.execute(
+            "UPDATE places SET lat = ?, lng = ? WHERE id = ?",
+            (lat, lng, place_id),
+        )
+
+
+def get_places_without_coords(db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
+    """Return all places that have not been geocoded yet."""
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM places WHERE lat IS NULL ORDER BY id"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_geocoded_places(db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
+    """Return all places that have valid coordinates, with article info."""
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            """SELECT p.id, p.name, p.description, p.city, p.country, p.rating,
+                      p.lat, p.lng, p.article_id, a.headline
+               FROM places p JOIN articles a ON a.id = p.article_id
+               WHERE p.lat IS NOT NULL AND p.lng IS NOT NULL
+               ORDER BY p.name""",
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def delete_place(place_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:

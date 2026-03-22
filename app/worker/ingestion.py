@@ -150,6 +150,12 @@ def ingest(
     if places:
         insert_places(article_id, places, db_path)
         log.info("Saved %d place(s) for article id=%s", len(places), article_id)
+        # Geocode newly inserted places (non-blocking: errors are logged only)
+        try:
+            from app.worker.geocoder import geocode_all_places
+            geocode_all_places(db_path)
+        except Exception as exc:
+            log.warning("Geocoding failed for article id=%s: %s", article_id, exc)
     if books:
         insert_books(article_id, books, db_path)
         log.info("Saved %d book(s) for article id=%s", len(books), article_id)

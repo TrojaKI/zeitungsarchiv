@@ -4,10 +4,10 @@ import os
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-from app.db.database import (delete_place, get_all_places, get_place_filter_options,
-                              get_review_count, update_place)
+from app.db.database import (delete_place, get_all_places, get_geocoded_places,
+                              get_place_filter_options, get_review_count, update_place)
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -27,6 +27,13 @@ async def places_list(request: Request, q: str = "", city: str = "", country: st
     if request.headers.get("hx-request"):
         return _templates.TemplateResponse("places_results.html", ctx)
     return _templates.TemplateResponse("places.html", ctx)
+
+
+@router.get("/places/map-data", response_class=JSONResponse)
+async def places_map_data():
+    """Return all geocoded places as JSON for the map view."""
+    places = get_geocoded_places(_DB)
+    return JSONResponse(content=places)
 
 
 @router.post("/places/{place_id}")

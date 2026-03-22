@@ -139,6 +139,24 @@ def export(fmt: str, output: str | None):
 
 
 @cli.command()
+def geocode():
+    """Geocode all places that are missing coordinates (uses Nominatim/OSM)."""
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
+
+    from app.db.database import get_places_without_coords
+    from app.worker.geocoder import geocode_all_places
+
+    pending = get_places_without_coords(_DB)
+    if not pending:
+        click.echo("All places already geocoded.")
+        return
+    click.echo(f"Geocoding {len(pending)} place(s)...")
+    done = geocode_all_places(_DB)
+    click.echo(f"Done: {done}/{len(pending)} geocoded successfully.")
+
+
+@cli.command()
 @click.option("--host", default="0.0.0.0", show_default=True)
 @click.option("--port", default=8000, show_default=True)
 def serve(host: str, port: int):
