@@ -30,9 +30,9 @@ async def places_list(request: Request, q: str = "", city: str = "", country: st
 
 
 @router.get("/places/map-data", response_class=JSONResponse)
-async def places_map_data():
-    """Return all geocoded places as JSON for the map view."""
-    places = get_geocoded_places(_DB)
+async def places_map_data(q: str = "", city: str = "", country: str = ""):
+    """Return geocoded places as JSON for the map view, respecting active filters."""
+    places = get_geocoded_places(query=q, city=city, country=country, db_path=_DB)
     return JSONResponse(content=places)
 
 

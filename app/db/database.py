@@ -293,16 +293,33 @@ def get_places_without_coords(db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def get_geocoded_places(db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
-    """Return all places that have valid coordinates, with article info."""
+def get_geocoded_places(
+    query: str = "",
+    city: str = "",
+    country: str = "",
+    db_path: Path = _DEFAULT_DB_PATH,
+) -> list[dict]:
+    """Return geocoded places with article info, optionally filtered."""
+    params: list = []
+    sql = """
+        SELECT p.id, p.name, p.description, p.city, p.country, p.rating,
+               p.lat, p.lng, p.article_id, a.headline
+        FROM places p JOIN articles a ON a.id = p.article_id
+        WHERE p.lat IS NOT NULL AND p.lng IS NOT NULL
+    """
+    if query:
+        q = f"%{query}%"
+        sql += " AND (p.name LIKE ? OR p.city LIKE ? OR p.address LIKE ? OR p.country LIKE ?)"
+        params.extend([q, q, q, q])
+    if city:
+        sql += " AND p.city LIKE ?"
+        params.append(f"%{city}%")
+    if country:
+        sql += " AND p.country = ?"
+        params.append(country)
+    sql += " ORDER BY p.name"
     with get_connection(db_path) as conn:
-        rows = conn.execute(
-            """SELECT p.id, p.name, p.description, p.city, p.country, p.rating,
-                      p.lat, p.lng, p.article_id, a.headline
-               FROM places p JOIN articles a ON a.id = p.article_id
-               WHERE p.lat IS NOT NULL AND p.lng IS NOT NULL
-               ORDER BY p.name""",
-        ).fetchall()
+        rows = conn.execute(sql, params).fetchall()
     return [dict(r) for r in rows]
 
 

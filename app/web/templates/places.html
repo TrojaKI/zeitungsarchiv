@@ -84,15 +84,19 @@ function switchTab(name, btn) {
   }
 }
 
-function initMap() {
-  mapInitialized = true;
-  leafletMap = L.map('map').setView([47.5, 14.0], 7);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
-  }).addTo(leafletMap);
+let mapMarkers = [];
 
-  fetch('/places/map-data')
+function getFilterParams() {
+  const form = document.querySelector('form[hx-get="/places"]');
+  return new URLSearchParams(new FormData(form)).toString();
+}
+
+function loadMapMarkers() {
+  if (!mapInitialized) return;
+  mapMarkers.forEach(m => m.remove());
+  mapMarkers = [];
+
+  fetch('/places/map-data?' + getFilterParams())
     .then(r => r.json())
     .then(places => {
       if (!places.length) return;
@@ -111,11 +115,29 @@ function initMap() {
           `<br><a href="/articles/${p.article_id}">Zum Artikel →</a>`
         );
         bounds.push([p.lat, p.lng]);
+        mapMarkers.push(marker);
       });
       if (bounds.length) {
         leafletMap.fitBounds(bounds, { padding: [40, 40] });
       }
     });
 }
+
+function initMap() {
+  mapInitialized = true;
+  leafletMap = L.map('map').setView([47.5, 14.0], 7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(leafletMap);
+  loadMapMarkers();
+}
+
+// Reload map markers after every HTMX filter request
+document.addEventListener('htmx:afterRequest', function(e) {
+  if (e.detail.elt.closest('form[hx-get="/places"]')) {
+    loadMapMarkers();
+  }
+});
 </script>
 {% endblock %}
