@@ -120,7 +120,7 @@ function loadMapMarkers() {
         mapMarkers.push(marker);
       });
       if (bounds.length) {
-        leafletMap.fitBounds(bounds, { padding: [40, 40] });
+        leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
       }
     });
 }
