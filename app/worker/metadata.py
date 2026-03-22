@@ -43,9 +43,13 @@ Wissenschaft, Lokales, International, Reise, Plus/Minus, Sonstiges.
 besteht — auch wenn kein +/- Symbol im OCR-Text sichtbar ist (es wird oft als \
 farbige Grafik gedruckt und fehlt im OCR).
 - tags: Array mit 3-5 relevanten deutschen Stichwörtern
-- locations: Array mit allen Ortsnamen, Städten, Regionen und Ländern die im Artikel \
-vorkommen. Z.B. ["Wien", "Wachau", "Österreich", "Gardasee", "Italien"]. Leeres Array \
-wenn keine Orte erkennbar.
+- locations: Array mit geografischen Ortsnamen die im Artikel vorkommen: Länder, \
+Bundesländer, Regionen, Städte, Gemeinden, Berge, Täler, Seen, Flüsse. \
+Beispiel: ["Wien", "Wachau", "Österreich", "Gardasee", "Sengsengebirge"]. \
+NICHT aufnehmen: Straßennamen und Adressen (z.B. "Mariahilfer Straße", "Hauptplatz 3"), \
+Gebäude- und Hotelnamen (z.B. "Hotel Sacher", "Palais X"), Institutionen und \
+Abkürzungen (z.B. "BOKU", "AMS", "ÖBB"), unvollständige oder abgeschnittene Begriffe. \
+Leeres Array wenn keine geografischen Orte erkennbar.
 - urls: Array mit allen Websites, URLs und E-Mail-Adressen die im Text vorkommen. \
 Z.B. ["www.apfelbauer.at", "info@hotel.com"]. Leeres Array wenn keine vorhanden.
 
