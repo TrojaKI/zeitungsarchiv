@@ -4,6 +4,13 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+# Load .env automatically if present (local dev)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
