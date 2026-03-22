@@ -200,7 +200,7 @@ Die WebApp ist unter **http://localhost:8000** erreichbar und bietet folgende Be
 
 | URL | Beschreibung |
 |---|---|
-| `/` | Volltextsuche mit Filtern (Zeitung, Kategorie, Zeitraum, Ort) |
+| `/` | Volltextsuche mit Filtern (Zeitung, Kategorie, Zeitraum, Land/Region, Ort) |
 | `/articles/<id>` | Detailansicht mit Originalbild und OCR-Text |
 | `/review` | Artikel mit niedrigem OCR-Konfidenzwert zur manuellen Prüfung |
 | `/places` | Alle extrahierten Orte — Listenansicht und interaktive Karte |
