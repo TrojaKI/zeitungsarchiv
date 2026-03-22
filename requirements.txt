@@ -9,6 +9,9 @@ ollama>=0.3.0
 # OpenAI-compatible API client (used for OpenRouter and LangDock providers)
 openai>=1.0
 
+# Robust JSON parsing for LLM output (handles curly quotes, trailing commas, etc.)
+json-repair>=0.30
+
 # Inbox watcher
 watchdog>=4.0.0
 

@@ -96,6 +96,5 @@ def _chat_openai_compat(
     completion = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
-        response_format={"type": "json_object"},
     )
     return completion.choices[0].message.content

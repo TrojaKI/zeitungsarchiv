@@ -3,6 +3,8 @@
 import json
 import logging
 
+from json_repair import repair_json
+
 from app.llm.provider import chat_json
 
 log = logging.getLogger(__name__)
@@ -10,8 +12,9 @@ log = logging.getLogger(__name__)
 _PROMPT = """\
 Du analysierst den OCR-Text eines eingescannten deutschen Zeitungsartikels.
 Extrahiere alle konkreten Orte, Lokale, Hotels, Restaurants, Geschäfte oder \
-Sehenswürdigkeiten die im Text mit Adressdaten, Telefonnummer, Öffnungszeiten \
-oder Website genannt werden.
+Sehenswürdigkeiten die im Text namentlich als Empfehlung, Tipp oder Ausflugsziel \
+genannt werden — auch wenn nur Name, Beschreibung oder Website vorhanden sind \
+(eine Straßenadresse ist nicht erforderlich).
 
 Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder \
 (null wenn nicht vorhanden):
@@ -61,7 +64,12 @@ def extract_places(ocr_text: str) -> list[dict]:
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
 
-        data = json.loads(raw)
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            log.debug("extract_places: strict JSON parse failed, attempting repair")
+            data = json.loads(repair_json(raw))
+
         # Model sometimes wraps the array in an object — find the first list value
         if isinstance(data, dict):
             lists = [v for v in data.values() if isinstance(v, list)]

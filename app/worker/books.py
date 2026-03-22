@@ -3,6 +3,8 @@
 import json
 import logging
 
+from json_repair import repair_json
+
 from app.llm.provider import chat_json
 
 log = logging.getLogger(__name__)
@@ -79,7 +81,12 @@ def extract_books(ocr_text: str) -> list[dict]:
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
 
-        data = json.loads(raw)
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            log.debug("extract_books: strict JSON parse failed, attempting repair")
+            data = json.loads(repair_json(raw))
+
         # Model sometimes wraps the array in an object — find the first list value
         if isinstance(data, dict):
             lists = [v for v in data.values() if isinstance(v, list)]
