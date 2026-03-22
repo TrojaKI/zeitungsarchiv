@@ -24,7 +24,7 @@
 {% block content %}
 <section class="search-box">
   <form hx-get="/places" hx-target="#places-results"
-        hx-trigger="submit, input[name='q'] delay:400ms, change[target.tagName=='SELECT'] delay:100ms">
+        hx-trigger="submit, input[target.name=='q'] delay:400ms, change[target.tagName=='SELECT'] delay:100ms">
     <div class="search-row">
       <input type="text" name="q" value="{{ q }}" placeholder="Name, Ort, Adresse…" autofocus>
       <button type="submit">Suchen</button>
