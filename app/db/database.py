@@ -5,6 +5,28 @@ import json
 from pathlib import Path
 from typing import Optional
 
+# Countries and large regions used to split the locations dropdown.
+# Values from articles.locations matching this set appear in the "Land/Region"
+# filter; everything else appears in the "Ort" filter.
+_GEO_REGIONS: frozenset[str] = frozenset({
+    # Sovereign states
+    "Österreich", "Deutschland", "Schweiz", "Frankreich", "Italien", "Spanien",
+    "Portugal", "Niederlande", "Belgien", "Luxemburg", "Polen", "Tschechien",
+    "Slowakei", "Ungarn", "Slowenien", "Kroatien", "Rumänien", "Bulgarien",
+    "Griechenland", "Türkei", "Russland", "Ukraine", "Serbien", "Dänemark",
+    "Schweden", "Norwegen", "Finnland", "Irland", "Großbritannien", "England",
+    "USA", "Kanada", "Australien", "Japan", "China", "Indien", "Brasilien",
+    "Chile", "Argentinien", "Mexiko", "Israel", "Iran", "Irak",
+    # Large regions / federal states
+    "Bayern", "Flandern", "Südtirol", "Europa",
+    "Niederösterreich", "Oberösterreich", "Steiermark", "Tirol", "Salzburg",
+    "Kärnten", "Burgenland", "Vorarlberg",
+    # Common Austrian sub-regions
+    "Innviertel", "Mühlviertel", "Waldviertel", "Weinviertel",
+    "Hausruckviertel", "Traunviertel", "Sauwald", "Salzkammergut",
+    "Wachau", "Kamptal", "Kremstal", "Eisacktal",
+})
+
 # Resolve schema and DB paths relative to this file
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 _DEFAULT_DB_PATH = Path(__file__).parent.parent.parent / "db" / "archive.db"
@@ -196,6 +218,7 @@ def search_full(
     date_from: str = "",
     date_to: str = "",
     location: str = "",
+    country: str = "",
     needs_review: Optional[bool] = None,
     sort: str = "date_desc",
     limit: int = 20,
@@ -247,6 +270,10 @@ def search_full(
         loc_col = "a.locations" if q else "locations"
         sql += f' AND {loc_col} LIKE ?'
         params.append(f'%"{location}"%')
+    if country:
+        loc_col = "a.locations" if q else "locations"
+        sql += f' AND {loc_col} LIKE ?'
+        params.append(f'%"{country}"%')
 
     _sort_map = {
         "date_desc":    ("a.article_date", "article_date", "DESC"),
@@ -594,9 +621,14 @@ def get_filter_options(db_path: Path = _DEFAULT_DB_PATH) -> dict:
         except (json.JSONDecodeError, TypeError):
             pass
 
+    # Split into countries/regions and specific places (cities, landmarks, etc.)
+    geo_regions = sorted(v for v in all_locations if v in _GEO_REGIONS)
+    locations = sorted(v for v in all_locations if v not in _GEO_REGIONS)
+
     return {
         "newspapers": newspapers,
         "categories": categories,
         "sections": sections,
-        "locations": sorted(all_locations),
+        "locations": locations,
+        "geo_regions": geo_regions,
     }

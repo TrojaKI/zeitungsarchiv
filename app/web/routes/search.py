@@ -44,7 +44,8 @@ async def index(request: Request):
     return _templates.TemplateResponse(
         "index.html",
         _ctx(request, results=results, q="", newspaper="", category="",
-             section="", date_from="", date_to="", location="", sort="date_desc", **opts),
+             section="", date_from="", date_to="", location="", country="",
+             sort="date_desc", **opts),
     )
 
 
@@ -58,6 +59,7 @@ async def search(
     date_from: str = "",
     date_to: str = "",
     location: str = "",
+    country: str = "",
     sort: str = "date_desc",
     offset: int = 0,
 ):
@@ -69,6 +71,7 @@ async def search(
         date_from=date_from,
         date_to=date_to,
         location=location,
+        country=country,
         sort=sort,
         limit=20,
         offset=offset,
@@ -85,6 +88,7 @@ async def search(
         date_from=date_from,
         date_to=date_to,
         location=location,
+        country=country,
         sort=sort,
         offset=offset,
         **opts,

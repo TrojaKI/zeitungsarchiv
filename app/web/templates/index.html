@@ -32,6 +32,14 @@
         {% endfor %}
       </select>
       {% endif %}
+      {% if geo_regions %}
+      <select name="country">
+        <option value="">Alle Länder</option>
+        {% for r in geo_regions %}
+          <option value="{{ r }}" {% if r == country %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
       <select name="location">
         <option value="">Alle Orte</option>
         {% for l in locations %}
