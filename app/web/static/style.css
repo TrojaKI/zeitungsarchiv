@@ -26,7 +26,7 @@ nav a:hover { color: #fff; }
 
 /* ── Article page navigation ── */
 .page-nav { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
-.page-nav-item {
+.page-nav a.page-nav-item {
   padding: .25rem .65rem;
   background: #e8e8e8;
   color: #222;
@@ -34,8 +34,8 @@ nav a:hover { color: #fff; }
   text-decoration: none;
   font-size: .85rem;
 }
-.page-nav-item:hover { background: #d0d0d0; color: #222; }
-.page-nav-item.active { background: #2b5da4; color: #fff; font-weight: 600; }
+.page-nav a.page-nav-item:hover { background: #d0d0d0; color: #222; }
+.page-nav a.page-nav-item.active { background: #2b5da4; color: #fff; font-weight: 600; }
 
 /* ── Layout ── */
 main { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
