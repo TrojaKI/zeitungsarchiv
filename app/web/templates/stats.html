@@ -64,7 +64,22 @@
           hx-disabled-elt="this">
     Inbox jetzt verarbeiten
   </button>
-  <span id="process-spinner" class="htmx-indicator"> ⏳ Verarbeite…</span>
+  <span id="process-spinner" class="htmx-indicator"> Verarbeite…</span>
   <div id="process-result"></div>
+</section>
+
+<section class="inbox-section">
+  <h2>Orte geocodieren</h2>
+  <p>Alle Orte ohne Koordinaten per Nominatim/OSM geocodieren (max. 1 Anfrage/Sekunde).</p>
+  <button class="btn-primary"
+          hx-post="/geocode"
+          hx-target="#geocode-result"
+          hx-swap="innerHTML"
+          hx-indicator="#geocode-spinner"
+          hx-disabled-elt="this">
+    Orte geocodieren
+  </button>
+  <span id="geocode-spinner" class="htmx-indicator"> Geocodiere…</span>
+  <div id="geocode-result"></div>
 </section>
 {% endblock %}

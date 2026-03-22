@@ -43,6 +43,25 @@ async def process_inbox(request: Request):
     return JSONResponse({"processed": count, "ids": ids})
 
 
+@router.post("/geocode")
+async def geocode_places(request: Request):
+    """Geocode all places that are missing coordinates."""
+    from app.worker.geocoder import geocode_all_places
+    from app.db.database import get_places_without_coords
+
+    pending = len(get_places_without_coords(_DB))
+    count = geocode_all_places(_DB)
+    if request.headers.get("hx-request"):
+        if pending == 0:
+            msg = '<p class="process-empty">Alle Orte haben bereits Koordinaten.</p>'
+        elif count:
+            msg = f'<p class="process-ok">✓ {count} von {pending} Ort(en) geocodiert.</p>'
+        else:
+            msg = f'<p class="process-empty">{pending} Ort(e) ohne Koordinaten — keine davon konnte geocodiert werden (fehlende Adresse/Stadt).</p>'
+        return HTMLResponse(msg)
+    return JSONResponse({"pending": pending, "geocoded": count})
+
+
 @router.get("/export")
 async def export(fmt: str = "csv"):
     """Export all articles as CSV or JSON."""
