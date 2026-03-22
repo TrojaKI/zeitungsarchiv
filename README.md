@@ -15,6 +15,7 @@ Scans werden per OCR in Text umgewandelt, mit KI-Metadaten angereichert und in e
 - [Schnellstart](#schnellstart)
   - [Mit Docker](#mit-docker)
   - [Ohne Docker (lokal)](#ohne-docker-lokal)
+- [WebApp](#webapp)
 - [CLI-Befehle](#cli-befehle)
 - [Mehrseitige Scans zusammenfügen](#mehrseitige-scans-zusammenfügen)
 - [Konfiguration](#konfiguration)
@@ -25,10 +26,12 @@ Scans werden per OCR in Text umgewandelt, mit KI-Metadaten angereichert und in e
 ## Features
 
 - **Automatische OCR** via Tesseract (Deutsch)
-- **KI-Metadatenextraktion** (Zeitung, Datum, Schlagzeile, Kategorie, Tags) via lokalem Ollama-Modell — kein Cloud-API-Key erforderlich
+- **KI-Metadatenextraktion** (Zeitung, Datum, Schlagzeile, Kategorie, Tags) — unterstützt Ollama (lokal), OpenRouter und LangDock
+- **Orte, Bücher und Rezepte** werden automatisch aus Artikeltexten extrahiert
+- **Interaktive Karte** (Leaflet/OpenStreetMap) mit automatischer Geocodierung aller Orte via Nominatim
 - **Mehrseitige Scans** werden mit Hugin automatisch zu einem Panorama zusammengeführt (`_01` + `_02` → `_00`)
 - **Volltextsuche** mit SQLite FTS5
-- **WebApp** (FastAPI + HTMX) mit Suche, Detailansicht und manuellem Review
+- **WebApp** (FastAPI + HTMX): Suche, Detailansicht, Review, Adressen-Karte, Bücher, Rezepte, Admin/Statistiken
 - **CLI** für Batch-Import, Suche, Export und Statistiken
 - **Docker-Support** für plattformunabhängigen Betrieb
 
@@ -191,6 +194,22 @@ zeitungsarchiv process
 
 ---
 
+## WebApp
+
+Die WebApp ist unter **http://localhost:8000** erreichbar und bietet folgende Bereiche:
+
+| URL | Beschreibung |
+|---|---|
+| `/` | Volltextsuche mit Filtern (Zeitung, Kategorie, Zeitraum, Ort) |
+| `/articles/<id>` | Detailansicht mit Originalbild und OCR-Text |
+| `/review` | Artikel mit niedrigem OCR-Konfidenzwert zur manuellen Prüfung |
+| `/places` | Alle extrahierten Orte — Listenansicht und interaktive Karte |
+| `/books` | Alle extrahierten Buchempfehlungen |
+| `/recipes` | Alle extrahierten Rezepte |
+| `/stats` | Statistiken, Export (CSV/JSON), Inbox-Trigger, Geocodierung |
+
+---
+
 ## CLI-Befehle
 
 ```bash
@@ -249,10 +268,10 @@ Der Inbox-Watcher ignoriert `_01`/`_02`-Dateien und wartet auf `_00`
 
 Alle Einstellungen können über Umgebungsvariablen gesetzt werden:
 
+### Allgemein
+
 | Variable | Standard | Beschreibung |
 |---|---|---|
-| `OLLAMA_HOST` | `http://localhost:11434` | Ollama-Server-URL |
-| `OLLAMA_MODEL` | `qwen2.5vl:3b` | Ollama-Modell für Metadaten |
 | `INBOX_DIR` | `./inbox` | Eingangsverzeichnis für Scans |
 | `ARCHIVE_DIR` | `./archive` | Archiv (verarbeitete Artikel + Bilder) |
 | `DB_PATH` | `./db/archive.db` | SQLite-Datenbankdatei |
@@ -260,6 +279,39 @@ Alle Einstellungen können über Umgebungsvariablen gesetzt werden:
 | `OCR_CONFIDENCE_THRESHOLD` | `70` | Unter diesem Wert → `needs_review = true` |
 | `WATCH_INBOX` | `true` | Inbox automatisch überwachen |
 | `LOG_LEVEL` | `INFO` | Log-Level (`DEBUG`, `INFO`, `WARNING`, …) |
+
+### LLM-Provider
+
+Das System unterstützt drei Provider für KI-Metadatenextraktion:
+
+| Variable | Standard | Beschreibung |
+|---|---|---|
+| `LLM_PROVIDER` | `ollama` | Provider: `ollama`, `openrouter` oder `langdock` |
+| `LLM_MODEL` | _(provider-spezifisch)_ | Optionaler Modell-Override |
+
+**Ollama (Standard, lokal, kostenlos):**
+
+| Variable | Standard | Beschreibung |
+|---|---|---|
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama-Server-URL |
+| `OLLAMA_MODEL` | `qwen2.5vl:3b` | Modell |
+
+In Docker zeigt `OLLAMA_HOST` auf `http://host.docker.internal:11434`.
+
+**OpenRouter (Cloud):**
+
+| Variable | Standard | Beschreibung |
+|---|---|---|
+| `OPENROUTER_API_KEY` | — | API-Key von openrouter.ai |
+| `OPENROUTER_MODEL` | `nvidia/nemotron-3-super-120b-a12b:free` | Modell-ID |
+
+**LangDock (Enterprise):**
+
+| Variable | Standard | Beschreibung |
+|---|---|---|
+| `LANGDOCK_API_KEY` | — | API-Key |
+| `LANGDOCK_API_URL` | `https://api.langdock.com/openai/v1` | Endpunkt |
+| `LANGDOCK_MODEL` | — | Modell-ID |
 
 In Docker: Werte in `docker-compose.yml` oder `.env` eintragen.
 Lokal: `export VARIABLE=wert` oder `.env`-Datei anlegen.
