@@ -49,17 +49,17 @@
 </section>
 
 <div class="tab-bar">
-  <button class="tab-btn active" onclick="switchTab('list', this)">Liste</button>
-  <button class="tab-btn" onclick="switchTab('map', this)">Karte</button>
+  <button class="tab-btn" onclick="switchTab('list', this)">Liste</button>
+  <button class="tab-btn active" onclick="switchTab('map', this)">Karte</button>
 </div>
 
-<div id="tab-list" class="tab-panel active">
+<div id="tab-list" class="tab-panel">
   <div id="places-results">
     {% include "places_results.html" %}
   </div>
 </div>
 
-<div id="tab-map" class="tab-panel">
+<div id="tab-map" class="tab-panel active">
   <div id="map"></div>
 </div>
 
@@ -124,6 +124,9 @@ function loadMapMarkers() {
       }
     });
 }
+
+// Initialize map on page load since it is the default tab
+document.addEventListener('DOMContentLoaded', function() { initMap(); });
 
 function initMap() {
   mapInitialized = true;
