@@ -26,13 +26,14 @@ Scans werden per OCR in Text umgewandelt, mit KI-Metadaten angereichert und in e
 ## Features
 
 - **Automatische OCR** via Tesseract (Deutsch)
-- **KI-Metadatenextraktion** (Zeitung, Datum, Schlagzeile, Kategorie, Tags) — unterstützt Ollama (lokal), OpenRouter und LangDock
+- **KI-Metadatenextraktion** (Zeitung, Datum, Schlagzeile, Kategorie, Tags, Orte) — unterstützt Ollama (lokal), OpenRouter und LangDock
 - **Orte, Bücher und Rezepte** werden automatisch aus Artikeltexten extrahiert
 - **Interaktive Karte** (Leaflet/OpenStreetMap) mit automatischer Geocodierung aller Orte via Nominatim
 - **Mehrseitige Scans** werden mit Hugin automatisch zu einem Panorama zusammengeführt (`_01` + `_02` → `_00`)
-- **Volltextsuche** mit SQLite FTS5
-- **WebApp** (FastAPI + HTMX): Suche, Detailansicht, Review, Adressen-Karte, Bücher, Rezepte, Admin/Statistiken
-- **CLI** für Batch-Import, Suche, Export und Statistiken
+- **Volltextsuche** mit SQLite FTS5 und Filtern nach Zeitung, Kategorie, Land/Region, Ort und Zeitraum
+- **Artikel bearbeiten** — Metadaten manuell korrigieren, Orte/Bücher/Rezepte direkt in der WebApp pflegen
+- **WebApp** (FastAPI + HTMX): Suche, Detailansicht, Bearbeitung, Review, Adressen-Karte, Bücher, Rezepte, Statistiken
+- **CLI** für Batch-Import, Suche, Export (CSV/JSON/SQL), Backup und Statistiken
 - **Docker-Support** für plattformunabhängigen Betrieb
 
 ---
@@ -178,18 +179,23 @@ Scans einfach in `inbox/` ablegen — der Watcher verarbeitet sie automatisch.
 ```bash
 source .venv/bin/activate
 
-# Umgebungsvariablen setzen
-export ARCHIVE_DIR=$(pwd)/archive
-export DB_PATH=$(pwd)/db/archive.db
-export INBOX_DIR=$(pwd)/inbox
-
 mkdir -p inbox archive db
 
-# WebApp starten
-uvicorn app.web.main:app --host 0.0.0.0 --port 8000 &
+# .env anlegen (wird beim Start automatisch geladen)
+cp .env.example .env
+
+# WebApp starten (liest .env automatisch)
+zeitungsarchiv serve &
 
 # In einem zweiten Terminal: Scans verarbeiten
 zeitungsarchiv process
+```
+
+Alternativ mit expliziten Umgebungsvariablen:
+
+```bash
+ARCHIVE_DIR=$(pwd)/archive DB_PATH=$(pwd)/db/archive.db INBOX_DIR=$(pwd)/inbox \
+  uvicorn app.web.main:app --host 0.0.0.0 --port 8000
 ```
 
 ---
@@ -202,6 +208,7 @@ Die WebApp ist unter **http://localhost:8000** erreichbar und bietet folgende Be
 |---|---|
 | `/` | Volltextsuche mit Filtern (Zeitung, Kategorie, Zeitraum, Land/Region, Ort) |
 | `/articles/<id>` | Detailansicht mit Originalbild und OCR-Text |
+| `/articles/<id>/edit` | Metadaten, Orte, Bücher und Rezepte manuell bearbeiten oder Artikel löschen |
 | `/review` | Artikel mit niedrigem OCR-Konfidenzwert zur manuellen Prüfung |
 | `/places` | Alle extrahierten Orte — Listenansicht und interaktive Karte |
 | `/books` | Alle extrahierten Buchempfehlungen |
