@@ -81,5 +81,26 @@
   </button>
   <span id="geocode-spinner" class="htmx-indicator"> Geocodiere…</span>
   <div id="geocode-result"></div>
+
+  {% if ungeocodiert %}
+  <table class="ungeo-table">
+    <thead>
+      <tr><th>Name</th><th>Adresse</th><th>Ort</th><th>Land</th><th>Artikel</th></tr>
+    </thead>
+    <tbody>
+      {% for p in ungeocodiert %}
+      <tr>
+        <td>{{ p.name or '–' }}</td>
+        <td>{{ p.address or '–' }}</td>
+        <td>{{ p.city or '–' }}</td>
+        <td>{{ p.country or '–' }}</td>
+        <td><a href="/articles/{{ p.article_id }}/edit">{{ p.headline or p.article_id }}</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="margin-top:.75rem;color:#166534">Alle Orte haben Koordinaten.</p>
+  {% endif %}
 </section>
 {% endblock %}

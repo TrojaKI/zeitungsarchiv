@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
-from app.db.database import get_review_count, get_stats, search_full
+from app.db.database import get_places_without_coords, get_review_count, get_stats, search_full
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -21,9 +21,11 @@ _ARCHIVE = Path(os.getenv("ARCHIVE_DIR", "/app/archive"))
 @router.get("/stats", response_class=HTMLResponse)
 async def stats(request: Request):
     data = get_stats(_DB)
+    ungeocodiert = get_places_without_coords(_DB)
     return _templates.TemplateResponse(
         "stats.html",
-        {"request": request, "review_count": get_review_count(_DB), **data},
+        {"request": request, "review_count": get_review_count(_DB),
+         "ungeocodiert": ungeocodiert, **data},
     )
 
 

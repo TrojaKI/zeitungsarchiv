@@ -121,3 +121,7 @@ th { background: #f0f0ec; font-weight: 600; }
 .htmx-request .htmx-indicator { display: inline; }
 .process-ok { margin-top: .75rem; color: #166534; background: #dcfce7; padding: .5rem .75rem; border-radius: 4px; }
 .process-empty { margin-top: .75rem; color: #92400e; background: #fef3c7; padding: .5rem .75rem; border-radius: 4px; }
+.ungeo-table { margin-top: 1rem; width: 100%; border-collapse: collapse; font-size: .88rem; }
+.ungeo-table th { text-align: left; padding: .35rem .6rem; background: #f3f4f6; border-bottom: 2px solid #e5e7eb; }
+.ungeo-table td { padding: .35rem .6rem; border-bottom: 1px solid #e5e7eb; }
+.ungeo-table tr:hover td { background: #f9fafb; }

@@ -285,10 +285,12 @@ def update_place_coords(place_id: int, lat: float, lng: float,
 
 
 def get_places_without_coords(db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
-    """Return all places that have not been geocoded yet."""
+    """Return all places that have not been geocoded yet, including article headline."""
     with get_connection(db_path) as conn:
         rows = conn.execute(
-            "SELECT * FROM places WHERE lat IS NULL ORDER BY id"
+            """SELECT p.*, a.headline
+               FROM places p JOIN articles a ON a.id = p.article_id
+               WHERE p.lat IS NULL ORDER BY p.name"""
         ).fetchall()
     return [dict(r) for r in rows]
 
