@@ -5,6 +5,9 @@ import os
 from pathlib import Path
 
 import click
+from dotenv import load_dotenv
+
+load_dotenv()
 
 _DB = Path(os.getenv("DB_PATH", "./db/archive.db"))
 _INBOX = Path(os.getenv("INBOX_DIR", "./inbox"))

@@ -26,3 +26,4 @@ click>=8.1.7
 
 # Configuration
 tomllib>=2.0.1; python_version < "3.11"
+python-dotenv>=1.0.0
