@@ -133,9 +133,9 @@ function initMap() {
   loadMapMarkers();
 }
 
-// Reload map markers after every HTMX filter request
-document.addEventListener('htmx:afterRequest', function(e) {
-  if (e.detail.elt.closest('form[hx-get="/places"]')) {
+// Reload map markers after HTMX settles the places results
+document.addEventListener('htmx:afterSettle', function(e) {
+  if (e.detail.target && e.detail.target.id === 'places-results') {
     loadMapMarkers();
   }
 });
