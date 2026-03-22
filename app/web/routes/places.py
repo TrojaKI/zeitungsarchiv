@@ -18,10 +18,20 @@ def _ctx(request: Request, **kwargs) -> dict:
     return {"request": request, "review_count": get_review_count(_DB), **kwargs}
 
 
+@router.get("/places/cities", response_class=HTMLResponse)
+async def places_cities(country: str = ""):
+    """Return city <option> elements filtered by country for HTMX dropdown update."""
+    opts = get_place_filter_options(country=country, db_path=_DB)
+    options = '<option value="">Alle Orte</option>'
+    for c in opts["cities"]:
+        options += f'<option value="{c}">{c}</option>'
+    return HTMLResponse(options)
+
+
 @router.get("/places", response_class=HTMLResponse)
 async def places_list(request: Request, q: str = "", city: str = "", country: str = ""):
     places = get_all_places(query=q, city=city, country=country, db_path=_DB)
-    opts = get_place_filter_options(_DB)
+    opts = get_place_filter_options(country=country, db_path=_DB)
     ctx = _ctx(request, places=places, q=q, city=city, country=country, **opts)
     # HTMX partial request: return only the results fragment
     if request.headers.get("hx-request"):

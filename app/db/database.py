@@ -358,15 +358,24 @@ def get_all_places(
     return [dict(r) for r in rows]
 
 
-def get_place_filter_options(db_path: Path = _DEFAULT_DB_PATH) -> dict:
-    """Return distinct countries and cities for place filter dropdowns."""
+def get_place_filter_options(country: str = "", db_path: Path = _DEFAULT_DB_PATH) -> dict:
+    """Return distinct countries and cities for place filter dropdowns.
+
+    If country is given, cities are restricted to that country.
+    """
     with get_connection(db_path) as conn:
         countries = [r[0] for r in conn.execute(
             "SELECT DISTINCT country FROM places WHERE country IS NOT NULL ORDER BY country"
         ).fetchall()]
-        cities = [r[0] for r in conn.execute(
-            "SELECT DISTINCT city FROM places WHERE city IS NOT NULL ORDER BY city"
-        ).fetchall()]
+        if country:
+            cities = [r[0] for r in conn.execute(
+                "SELECT DISTINCT city FROM places WHERE city IS NOT NULL AND country = ? ORDER BY city",
+                (country,),
+            ).fetchall()]
+        else:
+            cities = [r[0] for r in conn.execute(
+                "SELECT DISTINCT city FROM places WHERE city IS NOT NULL ORDER BY city"
+            ).fetchall()]
     return {"countries": countries, "cities": cities}
 
 

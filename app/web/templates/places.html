@@ -30,13 +30,15 @@
       <button type="submit">Suchen</button>
     </div>
     <div class="filter-row">
-      <select name="country">
+      <select name="country"
+              hx-get="/places/cities" hx-target="#city-select" hx-include="[name='country']"
+              hx-trigger="change">
         <option value="">Alle Länder</option>
         {% for c in countries %}
           <option value="{{ c }}" {% if c == country %}selected{% endif %}>{{ c }}</option>
         {% endfor %}
       </select>
-      <select name="city">
+      <select name="city" id="city-select">
         <option value="">Alle Orte</option>
         {% for c in cities %}
           <option value="{{ c }}" {% if c == city %}selected{% endif %}>{{ c }}</option>
