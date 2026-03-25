@@ -3,11 +3,18 @@
 import csv
 import io
 import json
+import logging
 import os
+import threading
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+
+log = logging.getLogger(__name__)
+
+_ingest_lock = threading.Lock()
+_ingest_status: dict = {"state": "idle", "message": ""}
 
 from app.db.database import get_places_without_coords, get_review_count, get_stats, search_full
 from app.web.templating import templates as _templates
@@ -30,9 +37,17 @@ async def stats(request: Request):
 
 
 def _run_ingest():
-    """Background task: ingest all TIFFs in inbox."""
-    from app.worker.ingestion import ingest_directory
-    ingest_directory(_INBOX, _ARCHIVE, _DB)
+    """Background task: ingest all TIFFs in inbox, update status."""
+    global _ingest_status
+    with _ingest_lock:
+        _ingest_status = {"state": "running", "message": "Verarbeitung läuft..."}
+    try:
+        from app.worker.ingestion import ingest_directory
+        ids = ingest_directory(_INBOX, _ARCHIVE, _DB)
+        _ingest_status = {"state": "done", "message": f"{len(ids)} Artikel verarbeitet."}
+    except Exception as exc:
+        log.exception("Ingestion failed: %s", exc)
+        _ingest_status = {"state": "error", "message": f"Fehler: {exc}"}
 
 
 @router.post("/process")
@@ -48,9 +63,31 @@ async def process_inbox(request: Request, background_tasks: BackgroundTasks):
 
     background_tasks.add_task(_run_ingest)
     if request.headers.get("hx-request"):
-        msg = f'<p class="process-ok">✓ {count} Datei(en) werden im Hintergrund verarbeitet…</p>'
+        msg = (
+            f'<p class="process-ok" '
+            f'hx-get="/process/status" hx-trigger="every 2s" hx-swap="outerHTML">'
+            f'Verarbeitung gestartet ({count} Datei(en))...</p>'
+        )
         return HTMLResponse(msg)
     return JSONResponse({"queued": count})
+
+
+@router.get("/process/status", response_class=HTMLResponse)
+async def process_status():
+    """Return current ingestion status for HTMX polling."""
+    s = _ingest_status
+    if s["state"] == "idle":
+        return HTMLResponse("")
+    if s["state"] == "running":
+        return HTMLResponse(
+            f'<p class="process-ok" '
+            f'hx-get="/process/status" hx-trigger="every 2s" hx-swap="outerHTML">'
+            f'{s["message"]}</p>'
+        )
+    if s["state"] == "done":
+        return HTMLResponse(f'<p class="process-ok">&#10003; {s["message"]}</p>')
+    # error
+    return HTMLResponse(f'<p class="process-empty">{s["message"]}</p>')
 
 
 @router.post("/geocode")

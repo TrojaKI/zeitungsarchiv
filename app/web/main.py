@@ -1,8 +1,14 @@
 """FastAPI application factory for Zeitungsarchiv."""
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+)
 
 # Load .env automatically if present (local dev)
 try:
