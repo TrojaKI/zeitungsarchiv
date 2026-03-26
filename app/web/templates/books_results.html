@@ -4,7 +4,7 @@
   <thead>
     <tr>
       <th>Titel</th><th>Autor</th><th>Verlag</th><th>Jahr</th>
-      <th>Seiten</th><th>Preis</th><th>ISBN</th><th>Artikel</th>
+      <th>Seiten</th><th>Preis</th><th>ISBN</th><th>URL</th><th>Artikel</th>
     </tr>
   </thead>
   <tbody>
@@ -19,6 +19,10 @@
       <td>{{ b.pages or '–' }}</td>
       <td>{{ b.price or '–' }}</td>
       <td>{{ b.isbn or '–' }}</td>
+      <td>{% if b.url %}
+        <a href="{{ b.url if b.url.startswith('http') else 'https://' + b.url }}"
+           target="_blank" rel="noopener" class="ext-link">{{ b.url }}</a>
+      {% else %}–{% endif %}</td>
       <td><a href="/articles/{{ b.article_id }}">{{ b.headline or b.article_id }}</a></td>
     </tr>
     {% endfor %}

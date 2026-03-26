@@ -31,6 +31,7 @@ Gib ein JSON-Array zurück. Jeder Eintrag hat diese Felder (null wenn nicht vorh
 - price: Preis (z.B. "19,90 Euro")
 - isbn: ISBN-Nummer
 - description: kurze Beschreibung oder Bewertung aus dem Artikel (1-2 Sätze)
+- url: Link zum Buch beim Verlag oder Buchshop falls im Artikel erwähnt, sonst leer
 
 Wenn keine Bücher vorgestellt oder rezensiert werden, gib [] zurück.
 Antworte NUR mit validem JSON ohne Markdown-Backticks.
@@ -116,5 +117,5 @@ def extract_books(ocr_text: str) -> list[dict]:
 
 def _clean(b: dict) -> dict:
     """Ensure all expected fields are present, strip whitespace."""
-    fields = ("title", "author", "publisher", "year", "pages", "price", "isbn", "description")
+    fields = ("title", "author", "publisher", "year", "pages", "price", "isbn", "description", "url")
     return {f: (str(b[f]).strip() if b.get(f) else None) for f in fields}

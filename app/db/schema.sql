@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS books (
     pages       TEXT,
     price       TEXT,
     isbn        TEXT,
-    description TEXT
+    description TEXT,
+    url         TEXT            -- link to publisher or bookshop (e.g. Thalia, Amazon)
 );
 
 -- Recipes published in articles

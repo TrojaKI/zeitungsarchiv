@@ -76,6 +76,7 @@
           <label>Seiten<input type="text" name="pages" value="{{ b.pages or '' }}"></label>
           <label>Preis<input type="text" name="price" value="{{ b.price or '' }}"></label>
           <label>ISBN<input type="text" name="isbn" value="{{ b.isbn or '' }}"></label>
+          <label>URL (Verlag / Buchshop)<input type="text" name="url" value="{{ b.url or '' }}" placeholder="https://…"></label>
           <label class="full-width">Beschreibung
             <textarea name="description" rows="2">{{ b.description or '' }}</textarea>
           </label>

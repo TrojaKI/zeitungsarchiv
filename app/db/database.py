@@ -466,8 +466,8 @@ def insert_books(article_id: int, books: list[dict],
                  db_path: Path = _DEFAULT_DB_PATH) -> None:
     """Delete existing books for the article and insert the new list."""
     sql = """INSERT INTO books
-             (article_id, title, author, publisher, year, pages, price, isbn, description)
-             VALUES (:article_id, :title, :author, :publisher, :year, :pages, :price, :isbn, :description)"""
+             (article_id, title, author, publisher, year, pages, price, isbn, description, url)
+             VALUES (:article_id, :title, :author, :publisher, :year, :pages, :price, :isbn, :description, :url)"""
     with get_connection(db_path) as conn:
         conn.execute("DELETE FROM books WHERE article_id = ?", (article_id,))
         for b in books:

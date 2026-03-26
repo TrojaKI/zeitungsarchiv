@@ -38,6 +38,7 @@ async def book_update(
     price: str = Form(""),
     isbn: str = Form(""),
     description: str = Form(""),
+    url: str = Form(""),
 ):
     update_book(book_id, {
         "title":       title or None,
@@ -48,6 +49,7 @@ async def book_update(
         "price":       price or None,
         "isbn":        isbn or None,
         "description": description or None,
+        "url":         url or None,
     }, _DB)
     return RedirectResponse(f"/articles/{article_id}/edit", status_code=303)
 
