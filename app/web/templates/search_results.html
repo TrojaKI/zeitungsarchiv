@@ -1,7 +1,7 @@
 {% if results %}
   <ul class="results">
     {% for a in results %}
-    <li class="result-card" onclick="location.href='/articles/{{ a.id }}'" style="cursor:pointer">
+    <li class="result-card" onclick="location.href='/articles/{{ a.id }}'"
       {% if a.thumb_path %}
         <img src="/archive/{{ a.thumb_path }}"
              alt="Vorschau {{ a.headline }}" class="thumb">

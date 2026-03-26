@@ -1,30 +1,28 @@
 {% if recipes %}
 <p class="places-count">{{ recipes | length }} Eintrag/Einträge</p>
-<div class="cards">
-  {% for r in recipes %}
-  <div class="card">
-    <h3>{{ r.name or '–' }}</h3>
-    {% if r.category %}<p class="meta">Kategorie: {{ r.category }}</p>{% endif %}
-    <div class="meta-row">
-      {% if r.servings %}<span>Portionen: {{ r.servings }}</span>{% endif %}
-      {% if r.prep_time %}<span>Zubereitungszeit: {{ r.prep_time }}</span>{% endif %}
-    </div>
-    {% if r.ingredients %}
-    <details>
-      <summary>Zutaten</summary>
-      <pre class="ingredients">{{ r.ingredients }}</pre>
-    </details>
-    {% endif %}
-    {% if r.instructions %}
-    <details>
-      <summary>Zubereitung</summary>
-      <pre class="instructions">{{ r.instructions }}</pre>
-    </details>
-    {% endif %}
-    <p class="article-link">Artikel: <a href="/articles/{{ r.article_id }}">{{ r.headline or r.article_id }}</a></p>
-  </div>
-  {% endfor %}
+{% for r in recipes %}
+<div class="recipe-card">
+  <h3>{{ r.name or '–' }}</h3>
+  <dl class="recipe-meta">
+    {% if r.category %}<dt>Kategorie</dt><dd>{{ r.category }}</dd>{% endif %}
+    {% if r.servings %}<dt>Menge</dt><dd>{{ r.servings }}</dd>{% endif %}
+    {% if r.prep_time %}<dt>Zubereitungszeit</dt><dd>{{ r.prep_time }}</dd>{% endif %}
+  </dl>
+  {% if r.ingredients %}
+  <details>
+    <summary>Zutaten</summary>
+    <pre class="recipe-ingredients">{{ r.ingredients }}</pre>
+  </details>
+  {% endif %}
+  {% if r.instructions %}
+  <details>
+    <summary>Zubereitung</summary>
+    <pre class="recipe-instructions">{{ r.instructions }}</pre>
+  </details>
+  {% endif %}
+  <div class="meta">Artikel: <a href="/articles/{{ r.article_id }}">{{ r.headline or r.article_id }}</a></div>
 </div>
+{% endfor %}
 {% else %}
 <p class="empty">Keine Einträge gefunden.</p>
 {% endif %}
