@@ -2,12 +2,62 @@
 
 import json
 import logging
+import urllib.parse
+import urllib.request
 
 from json_repair import repair_json
 
 from app.llm.provider import chat_json
 
 log = logging.getLogger(__name__)
+
+_OL_BASE = "https://openlibrary.org"
+_OL_TIMEOUT = 5  # seconds
+
+
+def lookup_book_url(book: dict) -> str | None:
+    """Query Open Library for a book URL (no API key required).
+
+    Strategy:
+      1. ISBN lookup — most reliable, instant redirect.
+      2. Title + author search — fallback when ISBN is missing.
+
+    Returns the Open Library URL or None on failure / no match.
+    """
+    isbn = (book.get("isbn") or "").replace("-", "").replace(" ", "")
+    if isbn:
+        url = f"{_OL_BASE}/isbn/{isbn}"
+        try:
+            req = urllib.request.Request(url, method="HEAD")
+            with urllib.request.urlopen(req, timeout=_OL_TIMEOUT) as resp:
+                if resp.status == 200:
+                    return url
+        except Exception:
+            pass  # fall through to title search
+
+    title = book.get("title")
+    if not title:
+        return None
+
+    params = {"title": title, "limit": "1"}
+    author = book.get("author")
+    if author:
+        params["author"] = author
+    search_url = f"{_OL_BASE}/search.json?{urllib.parse.urlencode(params)}"
+    try:
+        req = urllib.request.Request(
+            search_url,
+            headers={"Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=_OL_TIMEOUT) as resp:
+            data = json.loads(resp.read())
+        docs = data.get("docs") or []
+        if docs and docs[0].get("key"):
+            return f"{_OL_BASE}{docs[0]['key']}"
+    except Exception as exc:
+        log.debug("Open Library lookup failed for '%s': %s", title, exc)
+
+    return None
 
 _PROMPT = """\
 Du analysierst den OCR-Text eines eingescannten deutschen Zeitungsartikels.
@@ -108,6 +158,15 @@ def extract_books(ocr_text: str) -> list[dict]:
             if key and key not in seen:
                 seen.add(key)
                 unique.append(b)
+
+        # Enrich missing URLs via Open Library
+        for b in unique:
+            if not b.get("url"):
+                found = lookup_book_url(b)
+                if found:
+                    b["url"] = found
+                    log.debug("Open Library URL found for '%s': %s", b.get("title"), found)
+
         return unique
 
     except Exception as exc:
