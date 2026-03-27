@@ -136,6 +136,7 @@
         {% endif %}
         {% if b.isbn %}<span class="book-isbn">ISBN {{ b.isbn }}</span>{% endif %}
         {% if b.description %}<p class="book-description">{{ b.description }}</p>{% endif %}
+        {% if b.url %}<a href="{{ b.url if b.url.startswith('http') else 'https://' + b.url }}" target="_blank" rel="noopener" class="ext-link">{{ b.url }}</a>{% endif %}
       </div>
       {% endfor %}
     </section>
