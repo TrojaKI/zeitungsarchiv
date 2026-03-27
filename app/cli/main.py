@@ -187,6 +187,33 @@ def backup(output: str | None):
     click.echo(f"Backup written to {dest}  ({size_kb} KB)")
 
 
+@cli.command("enrich-books")
+def enrich_books():
+    """Look up Open Library URLs for all books that have none."""
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(message)s")
+
+    from app.db.database import get_all_books, update_book
+    from app.worker.books import lookup_book_url
+
+    books = [b for b in get_all_books(db_path=_DB) if not b.get("url")]
+    if not books:
+        click.echo("All books already have a URL.")
+        return
+
+    click.echo(f"Looking up URLs for {len(books)} book(s)...")
+    found = 0
+    for b in books:
+        url = lookup_book_url(b)
+        if url:
+            update_book(b["id"], {"url": url}, db_path=_DB)
+            click.echo(f"  [{b['id']}] {b.get('title') or '?'}  →  {url}")
+            found += 1
+        else:
+            click.echo(f"  [{b['id']}] {b.get('title') or '?'}  →  not found")
+    click.echo(f"Done: {found}/{len(books)} URLs found.")
+
+
 @cli.command()
 def geocode():
     """Geocode all places that are missing coordinates (uses Nominatim/OSM)."""
