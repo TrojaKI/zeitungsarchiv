@@ -171,7 +171,13 @@ def ingest(
     dest_dir = archive_dir / tiff_path.stem
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / "original.tif"
-    shutil.move(str(tiff_path), dest)
+    # Use explicit copy+delete to handle cross-device moves (Docker volumes on separate filesystems).
+    # shutil.move() fails with OSError EXDEV when inbox and archive are on different mounts.
+    try:
+        shutil.copy2(str(tiff_path), dest)
+        tiff_path.unlink()
+    except FileNotFoundError:
+        log.warning("Source TIFF already moved or deleted, skipping move: %s", tiff_path.name)
 
     log.info(
         "Ingested %s → id=%s  confidence=%.1f  needs_review=%s",

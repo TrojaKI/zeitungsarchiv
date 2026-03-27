@@ -76,7 +76,7 @@ def show(article_id: int):
 def process(inbox_dir: str | None):
     """Process all TIFF scans in the inbox directory."""
     import logging
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(message)s")
 
     from app.worker.ingestion import ingest_directory
 
@@ -191,7 +191,7 @@ def backup(output: str | None):
 def geocode():
     """Geocode all places that are missing coordinates (uses Nominatim/OSM)."""
     import logging
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(message)s")
 
     from app.db.database import get_places_without_coords
     from app.worker.geocoder import geocode_all_places

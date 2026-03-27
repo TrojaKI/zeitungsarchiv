@@ -6,8 +6,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s  %(levelname)-8s  %(message)s",
 )
 
 # Load .env automatically if present (local dev)
