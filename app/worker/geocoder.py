@@ -34,25 +34,45 @@ def geocode_place(place: dict) -> tuple[float, float] | None:
 
 
 def _build_queries(place: dict) -> list[str]:
-    """Build ordered list of query strings from most specific to least specific."""
+    """Build ordered list of query strings from most specific to least specific.
+
+    Tries up to five variants so that even places with incomplete address data
+    have a chance of being resolved to at least city-level coordinates.
+    """
     name = place.get("name") or ""
     address = place.get("address") or ""
     postal = place.get("postal_code") or ""
     city = place.get("city") or ""
     country = place.get("country") or ""
 
-    queries = []
+    seen: set[str] = set()
+    queries: list[str] = []
 
-    # Most specific: name + full address
+    def _add(*parts: str) -> None:
+        q = ", ".join(p for p in parts if p)
+        if q and q not in seen:
+            seen.add(q)
+            queries.append(q)
+
+    # 1. Most specific: name + full address
     if name and (address or city):
-        parts = [p for p in [name, address, postal, city, country] if p]
-        queries.append(", ".join(parts))
+        _add(name, address, postal, city, country)
 
-    # Fallback: city + country
+    # 2. Address without name (useful when name is not in OSM)
+    if address and city:
+        _add(address, postal, city, country)
+
+    # 3. Name + city (skip street address)
+    if name and city:
+        _add(name, city, country)
+
+    # 4. City + country only
     if city or country:
-        parts = [p for p in [city, country] if p]
-        if parts:
-            queries.append(", ".join(parts))
+        _add(city, country)
+
+    # 5. Postal code + country (last resort when city name is ambiguous)
+    if postal and country:
+        _add(postal, country)
 
     return queries
 

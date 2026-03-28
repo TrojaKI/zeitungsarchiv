@@ -44,6 +44,11 @@
           <option value="{{ c }}" {% if c == city %}selected{% endif %}>{{ c }}</option>
         {% endfor %}
       </select>
+      <select name="geocoded">
+        <option value="">Alle</option>
+        <option value="geocoded" {% if geocoded == 'geocoded' %}selected{% endif %}>Geocodiert</option>
+        <option value="not_geocoded" {% if geocoded == 'not_geocoded' %}selected{% endif %}>Nicht geocodiert</option>
+      </select>
     </div>
   </form>
 </section>
@@ -100,21 +105,33 @@ function loadMapMarkers() {
 
   fetch('/places/map-data?' + getFilterParams())
     .then(r => r.json())
-    .then(places => {
-      if (!places.length) return;
+    .then(rows => {
+      if (!rows.length) return;
+      // Group by canonical place id (one marker per physical location)
+      const byPlace = {};
+      rows.forEach(r => {
+        if (!byPlace[r.id]) byPlace[r.id] = { ...r, articles: [] };
+        byPlace[r.id].articles.push({
+          article_id:  r.article_id,
+          headline:    r.headline,
+          description: r.description,
+          rating:      r.rating,
+        });
+      });
       const bounds = [];
-      places.forEach(p => {
+      Object.values(byPlace).forEach(p => {
         const marker = L.marker([p.lat, p.lng]).addTo(leafletMap);
-        const ratingHtml = p.rating
-          ? `<span class="rating-badge">Wertung: ${p.rating}</span>` : '';
-        const desc = p.description
-          ? `<p style="margin:.3rem 0">${p.description.substring(0, 120)}${p.description.length > 120 ? '…' : ''}</p>` : '';
+        const articleLinks = p.articles.map(a => {
+          const ratingBadge = a.rating
+            ? ` <span class="rating-badge">${a.rating}</span>` : '';
+          const desc = a.description
+            ? `<p style="margin:.2rem 0;font-size:.85rem">${a.description.substring(0, 100)}${a.description.length > 100 ? '…' : ''}</p>` : '';
+          return `<div style="margin-top:.4rem">${desc}<a href="/articles/${a.article_id}">${a.headline || '#' + a.article_id}</a>${ratingBadge}</div>`;
+        }).join('');
         marker.bindPopup(
           `<strong>${p.name || '?'}</strong>` +
           (p.city ? `<div style="color:#666;font-size:.85rem">${p.city}</div>` : '') +
-          desc +
-          ratingHtml +
-          `<br><a href="/articles/${p.article_id}">Zum Artikel →</a>`
+          articleLinks
         );
         bounds.push([p.lat, p.lng]);
         mapMarkers.push(marker);

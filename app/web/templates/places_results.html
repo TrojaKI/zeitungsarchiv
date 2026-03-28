@@ -1,17 +1,51 @@
+{% macro sort_th(label, key, cur_sort, base_url) %}
+  {% set asc_key = key ~ '_asc' %}
+  {% set desc_key = key ~ '_desc' %}
+  {% set next_sort = desc_key if cur_sort == asc_key else asc_key %}
+  {% set ind = ' ▲' if cur_sort == asc_key else (' ▼' if cur_sort == desc_key else '') %}
+  <th><a hx-get="{{ base_url }}&sort={{ next_sort }}" hx-target="#places-results"
+         href="{{ base_url }}&sort={{ next_sort }}">{{ label }}{{ ind }}</a></th>
+{% endmacro %}
+
 {% if places %}
+{% set _base = '/places?q=' ~ q ~ '&city=' ~ city ~ '&country=' ~ country %}
 <p class="places-count">{{ places | length }} Eintrag/Einträge</p>
 <table class="places-table">
   <thead>
     <tr>
-      <th>Name</th><th>Adresse</th><th>PLZ / Ort</th><th>Land</th>
-      <th>Telefon</th><th>Öffnungszeiten</th><th>Website</th><th>Wertung</th><th>Artikel</th>
+      {{ sort_th('Name', 'name', sort, _base) }}
+      <th>Adresse</th>
+      {{ sort_th('PLZ / Ort', 'city', sort, _base) }}
+      {{ sort_th('Land', 'country', sort, _base) }}
+      <th>Telefon</th><th>Öffnungszeiten</th><th>Website</th>
+      <th>Artikel</th>
     </tr>
   </thead>
   <tbody>
     {% for p in places %}
     <tr>
-      <td><strong>{{ p.name or '–' }}</strong>
+      <td>
+        <strong>
+          {% if p.lat %}&#x1F4CD;{% else %}<span title="Nicht geocodiert">&#x26A0;</span>{% endif %}
+          {{ p.name or '–' }}
+        </strong>
         {% if p.description %}<br><small>{{ p.description }}</small>{% endif %}
+        <br>
+        <button class="merge-toggle" type="button"
+                onclick="toggleMerge(this, {{ p.id }})"
+                title="Zusammenführen">⤵ zusammenführen</button>
+        <div id="merge-form-{{ p.id }}" class="merge-form" style="display:none">
+          <form hx-post="/places/canonical/{{ p.id }}/merge" hx-target="#places-results"
+                hx-select="#places-results" hx-swap="outerHTML">
+            <select name="target_place_id" id="merge-select-{{ p.id }}"
+                    style="max-width:260px;font-size:.8rem">
+              <option value="">Klicken zum Laden…</option>
+            </select>
+            <button type="submit" class="btn" style="font-size:.8rem;padding:.2rem .6rem">
+              Zusammenführen
+            </button>
+          </form>
+        </div>
       </td>
       <td>{{ p.address or '–' }}</td>
       <td>{% if p.postal_code %}{{ p.postal_code }} {% endif %}{{ p.city or '–' }}</td>
@@ -22,8 +56,13 @@
         <a href="{{ p.url if p.url.startswith('http') else 'https://' + p.url }}"
            target="_blank" rel="noopener" class="ext-link">{{ p.url }}</a>
       {% else %}–{% endif %}</td>
-      <td>{{ p.rating or '–' }}</td>
-      <td><a href="/articles/{{ p.article_id }}">{{ p.headline or p.article_id }}</a></td>
+      <td>
+        {% if p.article_count == 1 %}
+          <a href="/articles/{{ p.article_id }}">{{ p.headline or p.article_id }}</a>
+        {% else %}
+          {{ p.article_count }} Artikel
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </tbody>
@@ -31,3 +70,30 @@
 {% else %}
 <p class="empty">Keine Einträge gefunden.</p>
 {% endif %}
+
+<style>
+.merge-toggle {
+  background: none; border: none; color: #9ca3af; cursor: pointer;
+  font-size: .72rem; padding: .1rem 0; margin-top: .25rem;
+}
+.merge-toggle:hover { color: #2563eb; }
+.merge-form { margin-top: .3rem; }
+.merge-form form { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+</style>
+<script>
+function toggleMerge(btn, placeId) {
+  const div = document.getElementById('merge-form-' + placeId);
+  if (div.style.display === 'none') {
+    div.style.display = 'block';
+    const sel = document.getElementById('merge-select-' + placeId);
+    if (sel.options.length <= 1 && sel.options[0].value === '') {
+      // Load candidates via fetch
+      fetch('/places/canonical/' + placeId + '/merge-candidates')
+        .then(r => r.text())
+        .then(html => { sel.innerHTML = html; });
+    }
+  } else {
+    div.style.display = 'none';
+  }
+}
+</script>

@@ -3,10 +3,18 @@
 {% block content %}
 <section class="search-box">
   <form hx-get="/recipes" hx-target="#recipes-results"
-        hx-trigger="submit, input[name='q'] delay:400ms">
+        hx-trigger="submit, input[name='q'] delay:400ms, change[target.tagName=='SELECT'] delay:100ms">
     <div class="search-row">
       <input type="text" name="q" value="{{ q }}" placeholder="Name oder Kategorie…" autofocus>
       <button type="submit">Suchen</button>
+    </div>
+    <div class="filter-row">
+      <select name="sort">
+        <option value="category_asc" {% if sort == 'category_asc' %}selected{% endif %}>Kategorie A–Z</option>
+        <option value="category_desc" {% if sort == 'category_desc' %}selected{% endif %}>Kategorie Z–A</option>
+        <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Name A–Z</option>
+        <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Name Z–A</option>
+      </select>
     </div>
   </form>
 </section>

@@ -232,6 +232,36 @@ def geocode():
     click.echo(f"Done: {done}/{len(pending)} geocoded successfully.")
 
 
+@cli.command("sync-locations")
+def sync_locations():
+    """Backfill articles.locations with city names from the places table."""
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(message)s")
+
+    from app.db.database import get_connection, sync_locations_from_places
+
+    with get_connection(_DB) as conn:
+        rows = conn.execute(
+            """SELECT DISTINCT pa.article_id FROM place_articles pa
+               JOIN places p ON p.id = pa.place_id
+               WHERE p.city IS NOT NULL"""
+        ).fetchall()
+
+    article_ids = [r[0] for r in rows]
+    if not article_ids:
+        click.echo("No places with cities found.")
+        return
+
+    click.echo(f"Syncing locations for {len(article_ids)} article(s)...")
+    updated = 0
+    for aid in article_ids:
+        merged = sync_locations_from_places(aid, _DB)
+        if merged:
+            click.echo(f"  [article {aid}] locations: {merged}")
+            updated += 1
+    click.echo(f"Done: {updated}/{len(article_ids)} articles updated.")
+
+
 @cli.command()
 @click.option("--host", default="0.0.0.0", show_default=True)
 @click.option("--port", default=8000, show_default=True)

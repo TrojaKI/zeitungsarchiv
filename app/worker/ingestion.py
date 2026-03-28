@@ -6,7 +6,10 @@ import shutil
 from datetime import date
 from pathlib import Path
 
-from app.db.database import init_db, insert_article, insert_books, insert_places, insert_recipes
+from app.db.database import (
+    init_db, insert_article, insert_books, insert_places, insert_recipes,
+    sync_locations_from_places,
+)
 from app.worker.books import extract_books
 from app.worker.metadata import extract_metadata
 from app.worker.ocr import process_scan
@@ -128,6 +131,8 @@ def ingest(
         "section": metadata.get("section"),
         "category": metadata.get("category"),
         "tags": metadata.get("tags", []),
+        "locations": metadata.get("locations", []),
+        "urls": metadata.get("urls", []),
         "full_text": ocr_result["full_text"],
         "image_path": ocr_result["image_path"],
         "thumb_path": ocr_result["thumb_path"],
@@ -154,6 +159,10 @@ def ingest(
     if places:
         insert_places(article_id, places, db_path)
         log.info("Saved %d place(s) for article id=%s", len(places), article_id)
+        # Merge place cities into article.locations
+        updated = sync_locations_from_places(article_id, db_path)
+        if updated:
+            log.info("Updated locations for article id=%s: %s", article_id, updated)
         # Geocode newly inserted places (non-blocking: errors are logged only)
         try:
             from app.worker.geocoder import geocode_all_places

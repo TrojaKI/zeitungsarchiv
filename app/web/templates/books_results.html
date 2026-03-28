@@ -1,9 +1,22 @@
+{% macro sort_th(label, key, cur_sort, base_url) %}
+  {% set asc_key = key ~ '_asc' %}
+  {% set desc_key = key ~ '_desc' %}
+  {% set next_sort = desc_key if cur_sort == asc_key else asc_key %}
+  {% set ind = ' ▲' if cur_sort == asc_key else (' ▼' if cur_sort == desc_key else '') %}
+  <th><a hx-get="{{ base_url }}&sort={{ next_sort }}" hx-target="#books-results"
+         href="{{ base_url }}&sort={{ next_sort }}">{{ label }}{{ ind }}</a></th>
+{% endmacro %}
+
 {% if books %}
+{% set _base = '/books?q=' ~ q %}
 <p class="places-count">{{ books | length }} Eintrag/Einträge</p>
 <table class="places-table">
   <thead>
     <tr>
-      <th>Titel</th><th>Autor</th><th>Verlag</th><th>Jahr</th>
+      {{ sort_th('Titel', 'title', sort, _base) }}
+      {{ sort_th('Autor', 'author', sort, _base) }}
+      <th>Verlag</th>
+      {{ sort_th('Jahr', 'year', sort, _base) }}
       <th>Seiten</th><th>Preis</th><th>ISBN</th><th>URL</th><th>Artikel</th>
     </tr>
   </thead>

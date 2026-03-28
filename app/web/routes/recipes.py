@@ -18,9 +18,9 @@ def _ctx(request: Request, **kwargs) -> dict:
 
 
 @router.get("/recipes", response_class=HTMLResponse)
-async def recipes_list(request: Request, q: str = ""):
-    recipes = get_all_recipes(query=q, db_path=_DB)
-    ctx = _ctx(request, recipes=recipes, q=q)
+async def recipes_list(request: Request, q: str = "", sort: str = "category_asc"):
+    recipes = get_all_recipes(query=q, sort=sort, db_path=_DB)
+    ctx = _ctx(request, recipes=recipes, q=q, sort=sort)
     if request.headers.get("hx-request"):
         return _templates.TemplateResponse("recipes_results.html", ctx)
     return _templates.TemplateResponse("recipes.html", ctx)

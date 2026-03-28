@@ -99,20 +99,43 @@ CREATE TABLE IF NOT EXISTS recipes (
     instructions TEXT    -- free-text block
 );
 
--- Places extracted from articles (restaurants, hotels, shops, ...)
+-- Canonical physical place (one row per real-world location)
 CREATE TABLE IF NOT EXISTS places (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    article_id  INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
-    name        TEXT,           -- e.g. "APFELBAUER", "Quellenhof Resort"
-    description TEXT,           -- short description from the article
-    address     TEXT,           -- street + number
-    postal_code TEXT,           -- e.g. "2761"
-    city        TEXT,           -- e.g. "Miesenbach"
-    country     TEXT,           -- e.g. "Österreich", "Italien"
-    phone       TEXT,           -- e.g. "02632/8244"
-    hours       TEXT,           -- e.g. "Mi-Sa 11-21, So 11-20"
-    url         TEXT,           -- e.g. "www.apfelbauer.at"
-    rating      TEXT,           -- e.g. "+", "-", "+/-"
+    name        TEXT NOT NULL,
+    address     TEXT,
+    postal_code TEXT,
+    city        TEXT,
+    country     TEXT,
+    phone       TEXT,
+    hours       TEXT,
+    url         TEXT,
     lat         REAL,           -- WGS84 latitude (from Nominatim geocoding)
-    lng         REAL            -- WGS84 longitude (from Nominatim geocoding)
+    lng         REAL,           -- WGS84 longitude (from Nominatim geocoding)
+    name_key    TEXT NOT NULL,  -- LOWER(TRIM(name)) for deduplication
+    city_key    TEXT NOT NULL   -- LOWER(TRIM(COALESCE(city,''))) for deduplication
 );
+
+-- Unique constraint: one canonical row per (name, city) combination
+CREATE UNIQUE INDEX IF NOT EXISTS places_dedup ON places (name_key, city_key);
+
+-- Article-specific mention: description and rating come from the article context
+CREATE TABLE IF NOT EXISTS place_articles (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    place_id    INTEGER NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+    article_id  INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    description TEXT,           -- how this article describes the place
+    rating      TEXT,           -- "+", "-", "+/-", or NULL
+    UNIQUE (place_id, article_id)
+);
+
+CREATE INDEX IF NOT EXISTS place_articles_article ON place_articles (article_id);
+CREATE INDEX IF NOT EXISTS place_articles_place   ON place_articles (place_id);
+
+-- Auto-delete orphaned places when the last article reference is removed
+CREATE TRIGGER IF NOT EXISTS place_articles_cleanup
+AFTER DELETE ON place_articles
+BEGIN
+    DELETE FROM places WHERE id = OLD.place_id
+      AND NOT EXISTS (SELECT 1 FROM place_articles WHERE place_id = OLD.place_id);
+END;

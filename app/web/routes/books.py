@@ -18,9 +18,9 @@ def _ctx(request: Request, **kwargs) -> dict:
 
 
 @router.get("/books", response_class=HTMLResponse)
-async def books_list(request: Request, q: str = ""):
-    books = get_all_books(query=q, db_path=_DB)
-    ctx = _ctx(request, books=books, q=q)
+async def books_list(request: Request, q: str = "", sort: str = "author_asc"):
+    books = get_all_books(query=q, sort=sort, db_path=_DB)
+    ctx = _ctx(request, books=books, q=q, sort=sort)
     if request.headers.get("hx-request"):
         return _templates.TemplateResponse("books_results.html", ctx)
     return _templates.TemplateResponse("books.html", ctx)

@@ -7,7 +7,8 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from app.db.database import (delete_place, get_all_places, get_geocoded_places,
-                              get_place_filter_options, get_review_count, update_place)
+                              get_place, get_place_filter_options, get_review_count,
+                              merge_places, update_place, update_place_coords)
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -29,10 +30,19 @@ async def places_cities(country: str = ""):
 
 
 @router.get("/places", response_class=HTMLResponse)
-async def places_list(request: Request, q: str = "", city: str = "", country: str = ""):
-    places = get_all_places(query=q, city=city, country=country, db_path=_DB)
+async def places_list(
+    request: Request,
+    q: str = "",
+    city: str = "",
+    country: str = "",
+    sort: str = "country_asc",
+    geocoded: str = "",
+):
+    places = get_all_places(query=q, city=city, country=country, sort=sort,
+                            geocoded=geocoded, db_path=_DB)
     opts = get_place_filter_options(country=country, db_path=_DB)
-    ctx = _ctx(request, places=places, q=q, city=city, country=country, **opts)
+    ctx = _ctx(request, places=places, q=q, city=city, country=country, sort=sort,
+               geocoded=geocoded, **opts)
     # HTMX partial request: return only the results fragment
     if request.headers.get("hx-request"):
         return _templates.TemplateResponse("places_results.html", ctx)
@@ -60,8 +70,10 @@ async def place_update(
     hours: str = Form(""),
     url: str = Form(""),
     rating: str = Form(""),
+    lat: str = Form(""),
+    lng: str = Form(""),
 ):
-    update_place(place_id, {
+    fields: dict = {
         "name":        name or None,
         "description": description or None,
         "address":     address or None,
@@ -72,11 +84,83 @@ async def place_update(
         "hours":       hours or None,
         "url":         url or None,
         "rating":      rating or None,
-    }, _DB)
+    }
+    try:
+        if lat:
+            fields["lat"] = float(lat)
+        if lng:
+            fields["lng"] = float(lng)
+    except ValueError:
+        pass
+    update_place(place_id, fields, _DB)
     return RedirectResponse(f"/articles/{article_id}/edit", status_code=303)
+
+
+@router.post("/places/{place_id}/geocode", response_class=HTMLResponse)
+async def place_geocode(place_id: int):
+    """Trigger Nominatim geocoding for a single place and return a status fragment.
+
+    place_id refers to place_articles.id; geocoding updates the canonical places row.
+    """
+    from app.worker.geocoder import geocode_place as _geocode
+    # get_place resolves pa_id to the canonical place fields
+    place = get_place(place_id, _DB)
+    if not place:
+        return HTMLResponse('<span class="geo-error">Ort nicht gefunden</span>')
+    coords = _geocode(place)
+    if coords:
+        lat, lng = coords
+        # Update the canonical places row using places.id (place["id"])
+        update_place_coords(place["id"], lat, lng, _DB)
+        return HTMLResponse(
+            f'<span class="geo-ok">Geocodiert: {lat:.5f}, {lng:.5f}</span>'
+        )
+    return HTMLResponse('<span class="geo-error">Kein Ergebnis von Nominatim</span>')
 
 
 @router.post("/places/{place_id}/delete")
 async def place_delete(place_id: int, article_id: int = Form(...)):
     delete_place(place_id, _DB)
     return RedirectResponse(f"/articles/{article_id}/edit", status_code=303)
+
+
+@router.get("/places/canonical/{canonical_id}/merge-candidates", response_class=HTMLResponse)
+async def place_merge_candidates(canonical_id: int):
+    """Return <option> elements for merge target candidates (canonical places.id)."""
+    from app.db.database import get_connection
+    with get_connection(_DB) as conn:
+        row = conn.execute(
+            "SELECT name_key FROM places WHERE id = ?", (canonical_id,)
+        ).fetchone()
+        if not row:
+            return HTMLResponse('<option value="">Kein Eintrag gefunden</option>')
+        name_key = row["name_key"]
+        candidates = conn.execute(
+            """SELECT p.id, p.name, p.city, COUNT(pa.id) AS article_count
+               FROM places p JOIN place_articles pa ON pa.place_id = p.id
+               WHERE p.id != ?
+                 AND (p.name_key LIKE ? OR ? LIKE '%' || p.name_key || '%')
+               GROUP BY p.id ORDER BY p.name""",
+            (canonical_id, f"%{name_key}%", name_key),
+        ).fetchall()
+    if not candidates:
+        return HTMLResponse('<option value="">Keine ähnlichen Einträge gefunden</option>')
+    opts = '<option value="">Bitte wählen…</option>'
+    for c in candidates:
+        label = c["name"] + (f" ({c['city']})" if c["city"] else "")
+        label += f" – {c['article_count']} Artikel"
+        opts += f'<option value="{c["id"]}">{label}</option>'
+    return HTMLResponse(opts)
+
+
+@router.post("/places/canonical/{canonical_id}/merge")
+async def place_merge(canonical_id: int, target_place_id: int = Form(...)):
+    """Merge canonical_id into target_place_id and refresh the places list."""
+    if canonical_id == target_place_id or not target_place_id:
+        from fastapi.responses import Response
+        return Response(status_code=204)
+    merge_places(canonical_id, target_place_id, _DB)
+    from fastapi.responses import Response
+    r = Response(status_code=204)
+    r.headers["HX-Refresh"] = "true"
+    return r

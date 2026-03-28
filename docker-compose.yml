@@ -8,6 +8,7 @@ services:
       - ./inbox:/app/inbox         # scan input (host ↔ container)
       - ./archive:/app/archive     # processed articles + images (persistent)
       - ./db:/app/db               # SQLite database file (persistent)
+      - ./app:/app/app             # live code reload during development
     environment:
       # Ollama: use host.docker.internal to reach Ollama on the host machine,
       # or replace with the URL of a dedicated Ollama container/server.
