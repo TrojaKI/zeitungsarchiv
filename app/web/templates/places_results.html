@@ -57,11 +57,11 @@
            target="_blank" rel="noopener" class="ext-link">{{ p.url }}</a>
       {% else %}–{% endif %}</td>
       <td>
-        {% if p.article_count == 1 %}
-          <a href="/articles/{{ p.article_id }}">{{ p.headline or p.article_id }}</a>
+        {% for art in p.articles %}
+          <a href="/articles/{{ art.id }}">{{ art.headline or art.id }}</a>{% if not loop.last %}, {% endif %}
         {% else %}
-          {{ p.article_count }} Artikel
-        {% endif %}
+          –
+        {% endfor %}
       </td>
     </tr>
     {% endfor %}

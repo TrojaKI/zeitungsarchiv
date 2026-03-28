@@ -1,6 +1,7 @@
 """Places routes: list/search all places, edit/delete individual place."""
 
 import os
+import sqlite3
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
@@ -92,7 +93,14 @@ async def place_update(
             fields["lng"] = float(lng)
     except ValueError:
         pass
-    update_place(place_id, fields, _DB)
+    try:
+        update_place(place_id, fields, _DB)
+    except sqlite3.IntegrityError:
+        return HTMLResponse(
+            "Ein Ort mit diesem Namen und dieser Stadt existiert bereits. "
+            "Bitte die Orte zusammenführen.",
+            status_code=409,
+        )
     return RedirectResponse(f"/articles/{article_id}/edit", status_code=303)
 
 

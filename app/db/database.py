@@ -588,13 +588,12 @@ def get_all_places(
     sql = """
         SELECT p.*,
                COUNT(pa.id) AS article_count,
-               (SELECT pa2.article_id FROM place_articles pa2
-                WHERE pa2.place_id = p.id ORDER BY pa2.id ASC LIMIT 1) AS article_id,
-               (SELECT a2.headline FROM articles a2
-                JOIN place_articles pa2 ON pa2.article_id = a2.id
-                WHERE pa2.place_id = p.id ORDER BY pa2.id ASC LIMIT 1) AS headline
+               json_group_array(
+                   json_object('id', pa.article_id, 'headline', a.headline)
+               ) AS articles_json
         FROM places p
         JOIN place_articles pa ON pa.place_id = p.id
+        JOIN articles a ON a.id = pa.article_id
         WHERE 1=1
     """
     if query:
@@ -614,7 +613,12 @@ def get_all_places(
     sql += f" GROUP BY p.id ORDER BY {order}"
     with get_connection(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        row = dict(r)
+        row["articles"] = json.loads(row.pop("articles_json", "[]"))
+        result.append(row)
+    return result
 
 
 def merge_places(source_id: int, target_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
