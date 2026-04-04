@@ -22,6 +22,30 @@ def _compute_confidence(ocr_data: dict) -> float:
     return round(sum(confidences) / len(confidences), 1) if confidences else 0.0
 
 
+def _extract_margin_text(binary: np.ndarray) -> str:
+    """Run sparse-text OCR on top/bottom margin strips to capture page numbers.
+
+    Page numbers are typically isolated in the header or footer zone and are
+    missed by PSM 1 (automatic page segmentation). PSM 11 (sparse text) finds
+    individual characters/words without requiring a block structure.
+    """
+    height = binary.shape[0]
+    margin = max(int(height * 0.12), 80)  # at least 80px
+
+    top_strip = binary[:margin, :]
+    bottom_strip = binary[height - margin:, :]
+
+    config = "--psm 11"  # sparse text: no assumed layout
+    results = []
+    for strip in (top_strip, bottom_strip):
+        text = pytesseract.image_to_string(
+            Image.fromarray(strip), lang=_TESS_LANG, config=config
+        ).strip()
+        if text:
+            results.append(text)
+    return " | ".join(results)
+
+
 def run_ocr(binary: np.ndarray) -> dict:
     """
     Run Tesseract on a binarized grayscale image array.
@@ -46,12 +70,14 @@ def run_ocr(binary: np.ndarray) -> dict:
 
     needs_review = confidence < CONFIDENCE_OK
     meta_source = "auto" if confidence >= CONFIDENCE_GOOD else "partial"
+    margin_text = _extract_margin_text(binary)
 
     return {
         "full_text": full_text.strip(),
         "ocr_confidence": confidence,
         "needs_review": needs_review,
         "meta_source": meta_source,
+        "margin_text": margin_text,
     }
 
 
@@ -72,4 +98,5 @@ def process_scan(tiff_path: Path, archive_dir: Path) -> dict:
         "ocr_confidence": ocr["ocr_confidence"],
         "needs_review": ocr["needs_review"],
         "meta_source": ocr["meta_source"],
+        "margin_text": ocr["margin_text"],
     }

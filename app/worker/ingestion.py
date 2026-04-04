@@ -112,7 +112,7 @@ def ingest(
         return None
 
     # --- step 2: metadata via Claude API ---
-    metadata = extract_metadata(ocr_result["full_text"])
+    metadata = extract_metadata(ocr_result["full_text"], ocr_result.get("margin_text", ""))
 
     # Elevate needs_review if critical metadata fields are missing
     if not metadata.get("article_date") or not metadata.get("newspaper"):

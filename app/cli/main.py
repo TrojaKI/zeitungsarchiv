@@ -214,6 +214,69 @@ def enrich_books():
     click.echo(f"Done: {found}/{len(books)} URLs found.")
 
 
+@cli.command("enrich-pages")
+@click.option("--archive-dir", default=None, help="Archive directory (default: ./archive)")
+def enrich_pages(archive_dir: str | None):
+    """Backfill page numbers for articles where the field is NULL.
+
+    Re-runs margin OCR (PSM 11) on the original TIFF and asks the LLM to extract
+    the page number from the header/footer text.
+    """
+    import logging
+    logging.basicConfig(level=logging.WARNING, format="%(asctime)s  %(levelname)-8s  %(message)s")
+
+    from app.db.database import get_connection, get_article, update_article
+    from app.worker.metadata import extract_metadata
+    from app.worker.ocr import _extract_margin_text
+    from app.worker.preprocess import preprocess
+
+    _archive = Path(archive_dir) if archive_dir else _ARCHIVE
+
+    # Fetch all articles missing a page number
+    with get_connection(_DB) as conn:
+        rows = conn.execute(
+            "SELECT id, filename, full_text FROM articles WHERE page IS NULL ORDER BY id"
+        ).fetchall()
+
+    if not rows:
+        click.echo("All articles already have a page number.")
+        return
+
+    click.echo(f"Processing {len(rows)} article(s) without page number...")
+    found = 0
+    for row in rows:
+        article_id: int = row["id"]
+        stem = Path(row["filename"]).stem
+        tiff_path = _archive / stem / "original.tif"
+
+        if not tiff_path.exists():
+            click.echo(f"  [{article_id}] TIFF not found: {tiff_path}  →  skipped")
+            continue
+
+        try:
+            pre = preprocess(tiff_path, _archive)
+            margin_text = _extract_margin_text(pre["binary"])
+        except Exception as exc:
+            click.echo(f"  [{article_id}] Preprocessing failed: {exc}  →  skipped")
+            continue
+
+        if not margin_text:
+            click.echo(f"  [{article_id}] No margin text found  →  skipped")
+            continue
+
+        metadata = extract_metadata(row["full_text"] or "", margin_text)
+        page = metadata.get("page")
+
+        if page:
+            update_article(article_id, {"page": page}, db_path=_DB)
+            click.echo(f"  [{article_id}] {stem}  →  page {page!r}")
+            found += 1
+        else:
+            click.echo(f"  [{article_id}] {stem}  →  not found (margin: {margin_text!r})")
+
+    click.echo(f"Done: {found}/{len(rows)} page numbers found.")
+
+
 @cli.command()
 def geocode():
     """Geocode all places that are missing coordinates (uses Nominatim/OSM)."""
@@ -260,6 +323,41 @@ def sync_locations():
             click.echo(f"  [article {aid}] locations: {merged}")
             updated += 1
     click.echo(f"Done: {updated}/{len(article_ids)} articles updated.")
+
+
+@cli.command()
+@click.argument("parts", nargs=-1, required=True, type=click.Path(exists=True))
+@click.option("--output", "-o", default=None, help="Output TIFF path (default: <first>_stitched.tif)")
+def stitch(parts: tuple[str, ...], output: str | None):
+    """Stitch 2+ scan parts into one TIFF using Hugin.
+
+    \b
+    Example workflow for a multi-page article with some pages scanned in two passes:
+      zeitungsarchiv stitch scan002.tif scan003.tif -o inbox/article_p02.tif
+      zeitungsarchiv stitch scan004.tif scan005.tif -o inbox/article_p03.tif
+      cp scan001.tif inbox/article_p01.tif
+      zeitungsarchiv process
+    """
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(message)s")
+
+    from app.worker.stitch import stitch_multipart
+
+    part_paths = [Path(p) for p in parts]
+    if len(part_paths) < 2:
+        raise click.UsageError("At least 2 input files required.")
+
+    if output:
+        out_path = Path(output)
+    else:
+        out_path = part_paths[0].parent / f"{part_paths[0].stem}_stitched.tif"
+
+    click.echo(f"Stitching {len(part_paths)} parts → {out_path.name} ...")
+    try:
+        result = stitch_multipart(part_paths, out_path)
+        click.echo(f"Done: {result}")
+    except RuntimeError as e:
+        raise click.ClickException(str(e))
 
 
 @cli.command()

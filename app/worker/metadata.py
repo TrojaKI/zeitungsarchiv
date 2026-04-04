@@ -143,9 +143,12 @@ def _parse_json(raw: str) -> dict | None:
         return None
 
 
-def extract_metadata(ocr_text: str) -> dict:
+def extract_metadata(ocr_text: str, margin_text: str = "") -> dict:
     """
     Extract structured metadata from OCR text via the configured LLM provider.
+
+    margin_text: optional output from _extract_margin_text() — header/footer OCR
+    that often contains the page number missing from the main OCR run.
 
     Falls back to _FALLBACK on any error -- never raises.
     """
@@ -154,6 +157,11 @@ def extract_metadata(ocr_text: str) -> dict:
         return dict(_FALLBACK)
 
     prompt = _PROMPT.format(ocr_text=ocr_text[:3000])
+    if margin_text:
+        prompt += (
+            f"\n\nRandtext (Kopf-/Fußzeile des Scans, enthält oft die Seitenzahl): "
+            f"{margin_text}"
+        )
 
     try:
         raw  = chat_json(prompt)

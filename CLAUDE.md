@@ -313,3 +313,6 @@ formats = ["csv", "json", "pdf"]
 - `skills/webapp/SKILL.md` — WebApp Skill
 - `examples/README.md` - Beispielscans
 
+## Style
+Follow @~/.claude/docs/STYLE.md for all coding conventions.
+
