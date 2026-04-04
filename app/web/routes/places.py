@@ -51,9 +51,9 @@ async def places_list(
 
 
 @router.get("/places/map-data", response_class=JSONResponse)
-async def places_map_data(q: str = "", city: str = "", country: str = ""):
+async def places_map_data(q: str = "", city: str = "", country: str = "", geocoded: str = ""):
     """Return geocoded places as JSON for the map view, respecting active filters."""
-    places = get_geocoded_places(query=q, city=city, country=country, db_path=_DB)
+    places = get_geocoded_places(query=q, city=city, country=country, geocoded=geocoded, db_path=_DB)
     return JSONResponse(content=places)
 
 

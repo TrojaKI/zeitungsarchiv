@@ -512,6 +512,7 @@ def get_geocoded_places(
     query: str = "",
     city: str = "",
     country: str = "",
+    geocoded: str = "",
     db_path: Path = _DEFAULT_DB_PATH,
 ) -> list[dict]:
     """Return geocoded places with article info.
@@ -520,13 +521,18 @@ def get_geocoded_places(
     and build multi-article popups for places referenced in several articles.
     """
     params: list = []
-    sql = """
+    if geocoded == "not_geocoded":
+        geo_condition = "(p.lat IS NULL OR p.lng IS NULL)"
+    else:
+        # default ("" or "geocoded"): only show places that can be pinned on the map
+        geo_condition = "p.lat IS NOT NULL AND p.lng IS NOT NULL"
+    sql = f"""
         SELECT p.id, p.name, p.city, p.country, p.lat, p.lng,
                pa.description, pa.rating, pa.article_id, a.headline
         FROM places p
         JOIN place_articles pa ON pa.place_id = p.id
         JOIN articles a ON a.id = pa.article_id
-        WHERE p.lat IS NOT NULL AND p.lng IS NOT NULL
+        WHERE {geo_condition}
     """
     if query:
         q = f"%{query}%"
