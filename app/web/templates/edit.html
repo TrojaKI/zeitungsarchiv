@@ -129,7 +129,6 @@
   </section>
   {% endif %}
 
-  {% if places %}
   <section class="places-edit">
     <h2>Orte &amp; Betriebe</h2>
     {% for p in places %}
@@ -177,7 +176,35 @@
       </form>
     </details>
     {% endfor %}
+    <details class="place-edit-card">
+      <summary>+ Neuen Ort hinzufügen</summary>
+      <form class="place-form" action="/articles/{{ article.id }}/places/add" method="post">
+        <div class="place-grid">
+          <label>Name<input type="text" name="name" required placeholder="Pflichtfeld"></label>
+          <label>Adresse<input type="text" name="address"></label>
+          <label>PLZ<input type="text" name="postal_code"></label>
+          <label>Ort<input type="text" name="city"></label>
+          <label>Land<input type="text" name="country"></label>
+          <label>Telefon<input type="text" name="phone"></label>
+          <label>Öffnungszeiten<input type="text" name="hours"></label>
+          <label>Website<input type="text" name="url"></label>
+          <label>Wertung
+            <select name="rating">
+              <option value="">–</option>
+              <option value="+">+ (positiv)</option>
+              <option value="-">- (negativ)</option>
+              <option value="+/-">+/- (gemischt)</option>
+            </select>
+          </label>
+          <label class="full-width">Beschreibung
+            <textarea name="description" rows="2"></textarea>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Hinzufügen</button>
+        </div>
+      </form>
+    </details>
   </section>
-  {% endif %}
 </div>
 {% endblock %}

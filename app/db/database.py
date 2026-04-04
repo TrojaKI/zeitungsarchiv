@@ -761,6 +761,55 @@ def insert_places(article_id: int, places: list[dict],
             )
 
 
+def add_place_to_article(
+    article_id: int,
+    place: dict,
+    db_path: Path = _DEFAULT_DB_PATH,
+) -> None:
+    """Match-or-insert a single canonical place and link it to the article.
+
+    Unlike insert_places(), this does NOT delete existing place links first.
+    """
+    with get_connection(db_path) as conn:
+        name = (place.get("name") or "").strip()
+        if not name:
+            raise ValueError("Place name is required")
+        city = (place.get("city") or "").strip()
+        name_key = _make_key(name)
+        city_key = _make_key(city)
+
+        row = conn.execute(
+            "SELECT id FROM places WHERE name_key = ? AND city_key = ?",
+            (name_key, city_key),
+        ).fetchone()
+
+        if row:
+            place_id = row["id"]
+            for field in ("address", "postal_code", "city", "country", "phone", "hours", "url"):
+                if place.get(field):
+                    conn.execute(
+                        f"UPDATE places SET {field} = ? WHERE id = ? AND {field} IS NULL",
+                        (place[field], place_id),
+                    )
+        else:
+            cur = conn.execute(
+                """INSERT INTO places
+                   (name, address, postal_code, city, country,
+                    phone, hours, url, name_key, city_key)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (name, place.get("address"), place.get("postal_code"), city or None,
+                 place.get("country"), place.get("phone"), place.get("hours"),
+                 place.get("url"), name_key, city_key),
+            )
+            place_id = cur.lastrowid
+
+        conn.execute(
+            "INSERT OR IGNORE INTO place_articles "
+            "(place_id, article_id, description, rating) VALUES (?, ?, ?, ?)",
+            (place_id, article_id, place.get("description"), place.get("rating") or None),
+        )
+
+
 def get_places(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
     """Return all places linked to an article.
 

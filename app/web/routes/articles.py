@@ -8,8 +8,9 @@ from pathlib import Path
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from app.db.database import (delete_article, get_article, get_books, get_group_articles,
-                              get_places, get_recipes, get_review_count, update_article)
+from app.db.database import (add_place_to_article, delete_article, get_article, get_books,
+                              get_group_articles, get_places, get_recipes, get_review_count,
+                              update_article)
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -110,6 +111,40 @@ async def article_update(
         },
     )
     return RedirectResponse(f"/articles/{article_id}", status_code=303)
+
+
+@router.post("/articles/{article_id}/places/add")
+async def article_place_add(
+    article_id: int,
+    name: str = Form(...),
+    address: str = Form(""),
+    postal_code: str = Form(""),
+    city: str = Form(""),
+    country: str = Form(""),
+    phone: str = Form(""),
+    hours: str = Form(""),
+    url: str = Form(""),
+    rating: str = Form(""),
+    description: str = Form(""),
+):
+    """Add a new place (or link an existing one) to an article."""
+    add_place_to_article(
+        article_id,
+        {
+            "name": name,
+            "address": address or None,
+            "postal_code": postal_code or None,
+            "city": city or None,
+            "country": country or None,
+            "phone": phone or None,
+            "hours": hours or None,
+            "url": url or None,
+            "rating": rating or None,
+            "description": description or None,
+        },
+        _DB,
+    )
+    return RedirectResponse(f"/articles/{article_id}/edit", status_code=303)
 
 
 @router.post("/articles/{article_id}/delete")
