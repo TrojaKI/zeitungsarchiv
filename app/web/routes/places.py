@@ -121,7 +121,7 @@ async def place_geocode(place_id: int):
         # Update the canonical places row using places.id (place["id"])
         update_place_coords(place["id"], lat, lng, _DB)
         return HTMLResponse(
-            f'<span class="geo-ok">Geocodiert: {lat:.5f}, {lng:.5f}</span>'
+            f'<span class="geo-ok">&#x1F4CD; {lat:.7f}, {lng:.7f}</span>'
         )
     return HTMLResponse('<span class="geo-error">Kein Ergebnis von Nominatim</span>')
 
