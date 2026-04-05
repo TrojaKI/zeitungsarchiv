@@ -60,11 +60,11 @@
   {% if verdaechtig %}
   <table class="ungeo-table">
     <thead>
-      <tr><th>Name</th><th>Adresse</th><th>Ort</th><th>Land</th><th>Lat</th><th>Lng</th><th>Artikel</th></tr>
+      <tr><th>Name</th><th>Adresse</th><th>Ort</th><th>Land</th><th>Lat</th><th>Lng</th><th>Artikel</th><th></th></tr>
     </thead>
     <tbody>
       {% for p in verdaechtig %}
-      <tr>
+      <tr id="suspect-{{ p.id }}">
         <td>{{ p.name or '–' }}</td>
         <td>{{ p.address or '–' }}</td>
         <td>{{ p.city or '–' }}</td>
@@ -72,6 +72,16 @@
         <td>{{ "%.5f"|format(p.lat) if p.lat else '–' }}</td>
         <td>{{ "%.5f"|format(p.lng) if p.lng else '–' }}</td>
         <td><a href="/articles/{{ p.article_id }}/edit">{{ p.headline or p.article_id }}</a></td>
+        <td class="actions-cell">
+          <a href="/articles/{{ p.article_id }}/edit" class="btn-secondary btn-sm">Bearbeiten</a>
+          <button class="btn-sm"
+                  hx-post="/places/canonical/{{ p.id }}/confirm-coords"
+                  hx-target="#suspect-{{ p.id }}"
+                  hx-swap="delete"
+                  hx-confirm="Koordinaten für '{{ p.name }}' als korrekt markieren?">
+            Bestätigen
+          </button>
+        </td>
       </tr>
       {% endfor %}
     </tbody>

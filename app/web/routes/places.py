@@ -169,6 +169,14 @@ async def place_merge_candidates(canonical_id: int):
     return HTMLResponse(opts)
 
 
+@router.post("/places/canonical/{canonical_id}/confirm-coords", response_class=HTMLResponse)
+async def place_confirm_coords(canonical_id: int):
+    """Mark a place's existing coordinates as manually confirmed (removes from suspect list)."""
+    from app.db.database import confirm_place_coords
+    confirm_place_coords(canonical_id, _DB)
+    return HTMLResponse("")
+
+
 @router.post("/places/canonical/{canonical_id}/merge")
 async def place_merge(canonical_id: int, target_place_id: int = Form(...)):
     """Merge canonical_id into target_place_id and refresh the places list."""

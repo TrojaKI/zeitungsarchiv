@@ -514,6 +514,15 @@ def get_places_without_coords(db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def confirm_place_coords(place_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Mark a place's existing coordinates as manually confirmed."""
+    with get_connection(db_path) as conn:
+        conn.execute(
+            "UPDATE places SET geocode_source = 'manual' WHERE id = ?",
+            (place_id,),
+        )
+
+
 def get_places_with_suspect_coords(db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
     """Return places that have coordinates but no known geocode source.
 
