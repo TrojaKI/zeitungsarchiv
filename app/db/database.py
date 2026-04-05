@@ -37,6 +37,8 @@ def get_connection(db_path: Path = _DEFAULT_DB_PATH) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    # Unicode-aware LOWER for German umlauts (SQLite built-in only handles ASCII)
+    conn.create_function("unicode_lower", 1, lambda x: x.lower() if x else x)
     # WAL mode allows concurrent reads while writing
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
@@ -572,15 +574,18 @@ def get_geocoded_places(
         WHERE {geo_condition}
     """
     if query:
-        q = f"%{query}%"
-        sql += " AND (p.name LIKE ? OR p.city LIKE ? OR p.address LIKE ? OR p.country LIKE ?)"
+        q = f"%{query.lower()}%"
+        sql += """ AND (unicode_lower(p.name)    LIKE ?
+                     OR unicode_lower(p.city)    LIKE ?
+                     OR unicode_lower(p.address) LIKE ?
+                     OR unicode_lower(p.country) LIKE ?)"""
         params.extend([q, q, q, q])
     if city:
-        sql += " AND p.city LIKE ?"
-        params.append(f"%{city}%")
+        sql += " AND unicode_lower(p.city) LIKE ?"
+        params.append(f"%{city.lower()}%")
     if country:
-        sql += " AND p.country = ?"
-        params.append(country)
+        sql += " AND unicode_lower(p.country) = ?"
+        params.append(country.lower())
     sql += " ORDER BY p.name"
     with get_connection(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
@@ -640,15 +645,18 @@ def get_all_places(
         WHERE 1=1
     """
     if query:
-        q = f"%{query}%"
-        sql += " AND (p.name LIKE ? OR p.city LIKE ? OR p.address LIKE ? OR p.country LIKE ?)"
+        q = f"%{query.lower()}%"
+        sql += """ AND (unicode_lower(p.name)    LIKE ?
+                     OR unicode_lower(p.city)    LIKE ?
+                     OR unicode_lower(p.address) LIKE ?
+                     OR unicode_lower(p.country) LIKE ?)"""
         params.extend([q, q, q, q])
     if city:
-        sql += " AND p.city LIKE ?"
-        params.append(f"%{city}%")
+        sql += " AND unicode_lower(p.city) LIKE ?"
+        params.append(f"%{city.lower()}%")
     if country:
-        sql += " AND p.country = ?"
-        params.append(country)
+        sql += " AND unicode_lower(p.country) = ?"
+        params.append(country.lower())
     if geocoded == "geocoded":
         sql += " AND p.lat IS NOT NULL AND p.lng IS NOT NULL"
     elif geocoded == "not_geocoded":
@@ -1038,8 +1046,8 @@ def sync_locations_from_places(article_id: int, db_path: Path = _DEFAULT_DB_PATH
 
 
 def search_places(query: str, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
-    """Search canonical places by name, city, address, etc. (case-insensitive LIKE)."""
-    q = f"%{query}%"
+    """Search canonical places by name, city, address, etc. (unicode case-insensitive)."""
+    q = f"%{query.lower()}%"
     with get_connection(db_path) as conn:
         rows = conn.execute(
             """SELECT p.*,
@@ -1048,8 +1056,11 @@ def search_places(query: str, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
                FROM places p
                JOIN place_articles pa ON pa.place_id = p.id
                JOIN articles a ON a.id = pa.article_id
-               WHERE p.name LIKE ? OR p.city LIKE ? OR p.address LIKE ?
-                  OR p.postal_code LIKE ? OR p.country LIKE ?
+               WHERE unicode_lower(p.name)        LIKE ?
+                  OR unicode_lower(p.city)        LIKE ?
+                  OR unicode_lower(p.address)     LIKE ?
+                  OR unicode_lower(p.postal_code) LIKE ?
+                  OR unicode_lower(p.country)     LIKE ?
                ORDER BY p.city, p.name""",
             (q, q, q, q, q),
         ).fetchall()
