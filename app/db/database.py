@@ -583,7 +583,9 @@ def get_geocoded_places(
     if city:
         sql += " AND unicode_lower(p.city) LIKE ?"
         params.append(f"%{city.lower()}%")
-    if country:
+    if country == "__none__":
+        sql += " AND (p.country IS NULL OR p.country = '')"
+    elif country:
         sql += " AND unicode_lower(p.country) = ?"
         params.append(country.lower())
     sql += " ORDER BY p.name"
@@ -654,7 +656,9 @@ def get_all_places(
     if city:
         sql += " AND unicode_lower(p.city) LIKE ?"
         params.append(f"%{city.lower()}%")
-    if country:
+    if country == "__none__":
+        sql += " AND (p.country IS NULL OR p.country = '')"
+    elif country:
         sql += " AND unicode_lower(p.country) = ?"
         params.append(country.lower())
     if geocoded == "geocoded":
@@ -718,7 +722,12 @@ def get_place_filter_options(country: str = "", db_path: Path = _DEFAULT_DB_PATH
         countries = [r[0] for r in conn.execute(
             "SELECT DISTINCT country FROM places WHERE country IS NOT NULL ORDER BY country"
         ).fetchall()]
-        if country:
+        if country == "__none__":
+            cities = [r[0] for r in conn.execute(
+                "SELECT DISTINCT city FROM places WHERE city IS NOT NULL"
+                " AND (country IS NULL OR country = '') ORDER BY city",
+            ).fetchall()]
+        elif country:
             cities = [r[0] for r in conn.execute(
                 "SELECT DISTINCT city FROM places WHERE city IS NOT NULL AND country = ? ORDER BY city",
                 (country,),

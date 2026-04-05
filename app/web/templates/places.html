@@ -34,6 +34,7 @@
               hx-get="/places/cities" hx-target="#city-select" hx-include="[name='country']"
               hx-trigger="change">
         <option value="">Alle Länder</option>
+        <option value="__none__" {% if country == '__none__' %}selected{% endif %}>(kein Land)</option>
         {% for c in countries %}
           <option value="{{ c }}" {% if c == country %}selected{% endif %}>{{ c }}</option>
         {% endfor %}
