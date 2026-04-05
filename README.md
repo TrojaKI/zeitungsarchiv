@@ -29,9 +29,12 @@ Scans werden per OCR in Text umgewandelt, mit KI-Metadaten angereichert und in e
 - **KI-Metadatenextraktion** (Zeitung, Datum, Schlagzeile, Kategorie, Tags, Orte) — unterstützt Ollama (lokal), OpenRouter und LangDock
 - **Orte, Bücher und Rezepte** werden automatisch aus Artikeltexten extrahiert
 - **Interaktive Karte** (Leaflet/OpenStreetMap) mit automatischer Geocodierung aller Orte via Nominatim
-- **Mehrseitige Scans** werden mit Hugin automatisch zu einem Panorama zusammengeführt (`_01` + `_02` → `_00`)
+- **Mehrseitige Scans** werden via OpenCV (ORB + RANSAC) automatisch zu einem Panorama zusammengeführt (`_01` + `_02` → `_00`) — keine externen Tools nötig
+- **Automatische Bildkorrektur**: Drehwinkel-Erkennung (Hough-Linien auf Textkanten) korrigiert schräg eingelegte Scans automatisch; Grob-Rotation via Tesseract OSD
+- **Bild neu verarbeiten**: Button in der Detailansicht und im Bearbeitungsformular führt Vorverarbeitung (inkl. Deskew) auf dem Original-TIFF erneut aus
 - **Volltextsuche** mit SQLite FTS5 und Filtern nach Zeitung, Kategorie, Land/Region, Ort und Zeitraum
 - **Artikel bearbeiten** — Metadaten manuell korrigieren, Orte/Bücher/Rezepte direkt in der WebApp pflegen
+- **Geocodierung mit Quellentracking**: Koordinaten werden als `nominatim` oder `manual` markiert; die Statistikseite listet Orte mit unbekannter Koordinatenherkunft zur Überprüfung
 - **WebApp** (FastAPI + HTMX): Suche, Detailansicht, Bearbeitung, Review, Adressen-Karte, Bücher, Rezepte, Statistiken
 - **CLI** für Batch-Import, Suche, Export (CSV/JSON/SQL), Backup und Statistiken
 - **Docker-Support** für plattformunabhängigen Betrieb
@@ -46,7 +49,7 @@ Scans werden per OCR in Text umgewandelt, mit KI-Metadaten angereichert und in e
 | Tesseract | ≥ 5 + Sprachpaket `deu` | OCR |
 | OpenCV | ≥ 4.9 | Bildvorverarbeitung |
 | Ollama | aktuell | Lokale KI-Metadaten |
-| Hugin-Tools | aktuell | Mehrseitige Scans (optional) |
+| OpenCV | ≥ 4.9 | Scan-Stitching (mehrseitige Scans) — bereits in den Systemabhängigkeiten |
 | Docker + Compose | aktuell | Containerisierter Betrieb (optional) |
 
 ---
@@ -66,12 +69,6 @@ sudo apt-get install -y \
     python3-opencv \
     python3-venv \
     python3-pip
-```
-
-Für mehrseitige Scans (optional):
-
-```bash
-sudo apt-get install -y hugin-tools
 ```
 
 #### 2. Ollama installieren
@@ -115,12 +112,6 @@ cp .env.example .env
 
 ```bash
 brew install tesseract tesseract-lang opencv python@3.13
-```
-
-Für mehrseitige Scans (optional):
-
-```bash
-brew install hugin
 ```
 
 #### 3. Ollama installieren
@@ -213,7 +204,7 @@ Die WebApp ist unter **http://localhost:8000** erreichbar und bietet folgende Be
 | `/places` | Alle extrahierten Orte — Listenansicht und interaktive Karte |
 | `/books` | Alle extrahierten Buchempfehlungen |
 | `/recipes` | Alle extrahierten Rezepte |
-| `/stats` | Statistiken, Export (CSV/JSON/SQL), Inbox-Trigger, Geocodierung |
+| `/stats` | Statistiken, Export (CSV/JSON/SQL), Inbox-Trigger, Geocodierung, Liste verdächtiger Koordinaten |
 
 > **Hinweis:** Die WebApp lädt Schriften (Playfair Display, DM Sans) von Google Fonts.
 > Ohne Internetverbindung werden automatisch System-Fallback-Schriften verwendet.
@@ -278,7 +269,7 @@ Ist `_00` bereits vorhanden, wird das Stitching übersprungen.
 Der Inbox-Watcher ignoriert `_01`/`_02`-Dateien und wartet auf `_00`
 (bzw. bis `process` ausgeführt wird).
 
-> **Voraussetzung:** `hugin-tools` muss installiert sein (siehe oben).
+Das Stitching verwendet OpenCV (ORB-Feature-Matching + RANSAC-Homographie + lineares Blending) — keine externen Tools erforderlich.
 
 ---
 
@@ -352,5 +343,4 @@ python -m pytest tests/test_stitch_integration.py -v
 python -m pytest tests/ -v
 ```
 
-Die Integrations-Tests werden automatisch übersprungen, wenn `hugin-tools`
-nicht installiert oder die Beispieldateien nicht vorhanden sind.
+Die Integrations-Tests werden automatisch übersprungen, wenn die Beispieldateien nicht vorhanden sind.
