@@ -121,7 +121,7 @@ async def place_geocode(place_id: int):
     if coords:
         lat, lng = coords
         # Update the canonical places row using places.id (place["id"])
-        update_place_coords(place["id"], lat, lng, _DB)
+        update_place_coords(place["id"], lat, lng, db_path=_DB)
         # OOB swaps keep the form inputs in sync so a subsequent save does not
         # overwrite the freshly geocoded coordinates with stale form values.
         return HTMLResponse(

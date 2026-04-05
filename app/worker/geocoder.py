@@ -126,7 +126,7 @@ def geocode_all_places(db_path: Path) -> int:
         coords = geocode_place(place)
         if coords:
             lat, lng = coords
-            update_place_coords(place["id"], lat, lng, db_path)
+            update_place_coords(place["id"], lat, lng, db_path=db_path)
             log.info("Geocoded place id=%d %r -> (%.4f, %.4f)",
                      place["id"], place.get("name"), lat, lng)
             success += 1
