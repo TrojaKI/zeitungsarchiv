@@ -54,7 +54,7 @@
 </div>
 
 <section class="inbox-section">
-  <h2>Verdächtige Geokoordinaten</h2>
+  <h2>Verdächtige Geokoordinaten{% if verdaechtig %} ({{ verdaechtig|length }}){% endif %}</h2>
   <p>Orte mit Koordinaten, deren Herkunft unbekannt ist (möglicherweise fehlerhafte Länder-Standardwerte).
      Adresse ergänzen und neu geocodieren oder Koordinaten manuell korrigieren.</p>
   {% if verdaechtig %}
