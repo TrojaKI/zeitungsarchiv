@@ -12,6 +12,7 @@ from app.db.database import (add_place_to_article, delete_article, get_article, 
                               get_group_articles, get_places, get_recipes, get_review_count,
                               update_article)
 from app.web.templating import templates as _templates
+from app.worker.preprocess import preprocess
 
 router = APIRouter()
 _DB = Path(os.getenv("DB_PATH", "/app/db/archive.db"))
@@ -145,6 +146,31 @@ async def article_place_add(
         _DB,
     )
     return RedirectResponse(f"/articles/{article_id}/edit", status_code=303)
+
+
+@router.post("/articles/{article_id}/reprocess-image")
+async def article_reprocess_image(article_id: int, request: Request):
+    """Re-run image preprocessing on the archived original TIFF."""
+    archive_dir = Path(os.getenv("ARCHIVE_DIR", "/app/archive"))
+    article = get_article(article_id, _DB)
+    if article is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    stem = Path(article["filename"]).stem
+    tiff_path = archive_dir / stem / "original.tif"
+    if not tiff_path.exists():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Original TIFF not found: {tiff_path}")
+
+    result = preprocess(tiff_path, archive_dir)
+    update_article(article_id, {
+        "image_path": result["image_path"],
+        "thumb_path": result["thumb_path"],
+    }, _DB)
+    # Redirect back to the referring page (detail or edit), fallback to detail
+    referer = request.headers.get("referer", f"/articles/{article_id}")
+    return RedirectResponse(referer, status_code=303)
 
 
 @router.post("/articles/{article_id}/delete")

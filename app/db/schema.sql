@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS places (
     url         TEXT,
     lat         REAL,           -- WGS84 latitude (from Nominatim geocoding)
     lng         REAL,           -- WGS84 longitude (from Nominatim geocoding)
+    geocode_source TEXT,        -- 'nominatim' | 'manual' | NULL = unbekannt/verdächtig
     name_key    TEXT NOT NULL,  -- LOWER(TRIM(name)) for deduplication
     city_key    TEXT NOT NULL   -- LOWER(TRIM(COALESCE(city,''))) for deduplication
 );

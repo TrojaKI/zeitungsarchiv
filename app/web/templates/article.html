@@ -19,6 +19,13 @@
         <img src="/archive/{{ article.image_path }}"
              alt="Scan {{ article.headline }}">
       </a>
+      <form method="post" action="/articles/{{ article.id }}/reprocess-image"
+            style="margin-top: 0.5rem;"
+            onsubmit="return confirm('Bild neu verarbeiten? Das Archivbild und Thumbnail werden überschrieben.')">
+        <button type="submit" class="btn-secondary" style="width: 100%; font-size: 0.85rem;">
+          Bild neu verarbeiten
+        </button>
+      </form>
     {% endif %}
   </aside>
 

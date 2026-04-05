@@ -204,6 +204,11 @@ def init_db(db_path: Path = _DEFAULT_DB_PATH) -> None:
         for col, sql in migrations:
             if col not in existing:
                 conn.execute(sql)
+        # Migrate places table: add geocode_source column
+        places_cols = {row[1] for row in conn.execute("PRAGMA table_info(places)")}
+        if "geocode_source" not in places_cols:
+            conn.execute("ALTER TABLE places ADD COLUMN geocode_source TEXT")
+
         # Migrate: create books and recipes tables if not yet present
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS books (
@@ -484,12 +489,13 @@ def update_place(pa_id: int, fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> 
 
 
 def update_place_coords(place_id: int, lat: float, lng: float,
+                        source: str = "nominatim",
                         db_path: Path = _DEFAULT_DB_PATH) -> None:
     """Store geocoded coordinates for a canonical place (places.id)."""
     with get_connection(db_path) as conn:
         conn.execute(
-            "UPDATE places SET lat = ?, lng = ? WHERE id = ?",
-            (lat, lng, place_id),
+            "UPDATE places SET lat = ?, lng = ?, geocode_source = ? WHERE id = ?",
+            (lat, lng, source, place_id),
         )
 
 
@@ -504,6 +510,28 @@ def get_places_without_coords(db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
                        JOIN place_articles pa ON pa.article_id = a.id
                        WHERE pa.place_id = p.id ORDER BY pa.id ASC LIMIT 1) AS headline
                FROM places p WHERE p.lat IS NULL ORDER BY p.name"""
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_places_with_suspect_coords(db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
+    """Return places that have coordinates but no known geocode source.
+
+    These are candidates for re-geocoding: coordinates were likely assigned
+    by the old country-only fallback query (e.g. Austria centroid).
+    """
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            """SELECT p.id, p.name, p.address, p.postal_code, p.city, p.country,
+                      p.lat, p.lng,
+                      (SELECT pa.article_id FROM place_articles pa WHERE pa.place_id = p.id
+                       ORDER BY pa.id ASC LIMIT 1) AS article_id,
+                      (SELECT a.headline FROM articles a
+                       JOIN place_articles pa ON pa.article_id = a.id
+                       WHERE pa.place_id = p.id ORDER BY pa.id ASC LIMIT 1) AS headline
+               FROM places p
+               WHERE p.lat IS NOT NULL AND p.geocode_source IS NULL
+               ORDER BY p.name"""
         ).fetchall()
     return [dict(r) for r in rows]
 

@@ -91,6 +91,8 @@ async def place_update(
             fields["lat"] = float(lat)
         if lng:
             fields["lng"] = float(lng)
+        if lat or lng:
+            fields["geocode_source"] = "manual"
     except ValueError:
         pass
     try:
@@ -120,8 +122,14 @@ async def place_geocode(place_id: int):
         lat, lng = coords
         # Update the canonical places row using places.id (place["id"])
         update_place_coords(place["id"], lat, lng, _DB)
+        # OOB swaps keep the form inputs in sync so a subsequent save does not
+        # overwrite the freshly geocoded coordinates with stale form values.
         return HTMLResponse(
             f'<span class="geo-ok">&#x1F4CD; {lat:.7f}, {lng:.7f}</span>'
+            f'<input type="number" step="0.0000001" name="lat"'
+            f' id="lat-{place_id}" value="{lat:.7f}" hx-swap-oob="true">'
+            f'<input type="number" step="0.0000001" name="lng"'
+            f' id="lng-{place_id}" value="{lng:.7f}" hx-swap-oob="true">'
         )
     return HTMLResponse('<span class="geo-error">Kein Ergebnis von Nominatim</span>')
 

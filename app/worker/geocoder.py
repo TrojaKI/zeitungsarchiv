@@ -66,11 +66,15 @@ def _build_queries(place: dict) -> list[str]:
     if name and city:
         _add(name, city, country)
 
-    # 4. City + country only
-    if city or country:
+    # 4. Name + country (when city is unknown but name may be findable)
+    if name and country and not city:
+        _add(name, country)
+
+    # 5. City + country only (requires city — country-only returns centroid)
+    if city:
         _add(city, country)
 
-    # 5. Postal code + country (last resort when city name is ambiguous)
+    # 6. Postal code + country (last resort when city name is ambiguous)
     if postal and country:
         _add(postal, country)
 

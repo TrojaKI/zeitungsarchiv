@@ -40,14 +40,33 @@ def detect_orientation(gray: np.ndarray) -> int:
 
 
 def _deskew_angle(gray: np.ndarray) -> float:
-    """Compute skew correction angle from a grayscale image."""
-    coords = np.column_stack(np.where(gray < 128))
-    if len(coords) < 10:
+    """Compute skew correction angle using Hough line detection on text edges.
+
+    More reliable than minAreaRect for newspaper scans because it detects
+    actual text baselines rather than fitting a bounding rectangle over all
+    dark pixels scattered across the page.
+    """
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blurred, 50, 150, apertureSize=3)
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100,
+                             minLineLength=100, maxLineGap=20)
+    if lines is None or len(lines) < 5:
         return 0.0
-    angle = cv2.minAreaRect(coords.astype(np.float32))[-1]
-    if angle < -45:
-        angle = 90 + angle
-    return angle if abs(angle) >= 0.5 else 0.0
+
+    angles = []
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        if x2 == x1:
+            continue  # skip vertical lines
+        angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
+        if abs(angle) <= 20:  # only roughly horizontal lines (text baselines)
+            angles.append(angle)
+
+    if len(angles) < 5:
+        return 0.0
+
+    median_angle = float(np.median(angles))
+    return median_angle if abs(median_angle) >= 0.3 else 0.0
 
 
 def _rotate(img: np.ndarray, angle: float) -> np.ndarray:
@@ -59,9 +78,16 @@ def _rotate(img: np.ndarray, angle: float) -> np.ndarray:
 
 
 def deskew(img: np.ndarray) -> np.ndarray:
-    """Correct skew via minAreaRect on dark pixel coordinates (grayscale input)."""
+    """Correct skew via Hough line detection (grayscale input).
+
+    The detected angle represents the tilt direction of text lines.
+    We negate it to rotate back to horizontal.
+    """
     angle = _deskew_angle(img)
-    return _rotate(img, angle) if angle != 0.0 else img
+    if angle == 0.0:
+        return img
+    log.debug("Deskew: rotating by %.2f° (detected tilt: %.2f°)", -angle, angle)
+    return _rotate(img, -angle)
 
 
 def normalize_contrast(img: np.ndarray) -> np.ndarray:
@@ -142,11 +168,12 @@ def preprocess(tiff_path: Path, archive_dir: Path = ARCHIVE_DIR) -> dict:
         img_color = np.ascontiguousarray(np.rot90(img_color, k=k))
         img_gray = np.ascontiguousarray(np.rot90(img_gray, k=k))
 
-    # Step 2: fine deskew for small residual angles (±45°)
+    # Step 2: fine deskew for small residual angles (±20°)
     angle = _deskew_angle(img_gray)
     if angle != 0.0:
-        img_color = _rotate(img_color, angle)
-        img_gray = _rotate(img_gray, angle)
+        log.info("Deskew: correcting %.2f° tilt", angle)
+        img_color = _rotate(img_color, -angle)
+        img_gray = _rotate(img_gray, -angle)
 
     # Contrast + noise reduction on grayscale (for OCR quality)
     img_proc = normalize_contrast(img_gray)

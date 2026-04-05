@@ -54,6 +54,34 @@
 </div>
 
 <section class="inbox-section">
+  <h2>Verdächtige Geokoordinaten</h2>
+  <p>Orte mit Koordinaten, deren Herkunft unbekannt ist (möglicherweise fehlerhafte Länder-Standardwerte).
+     Adresse ergänzen und neu geocodieren oder Koordinaten manuell korrigieren.</p>
+  {% if verdaechtig %}
+  <table class="ungeo-table">
+    <thead>
+      <tr><th>Name</th><th>Adresse</th><th>Ort</th><th>Land</th><th>Lat</th><th>Lng</th><th>Artikel</th></tr>
+    </thead>
+    <tbody>
+      {% for p in verdaechtig %}
+      <tr>
+        <td>{{ p.name or '–' }}</td>
+        <td>{{ p.address or '–' }}</td>
+        <td>{{ p.city or '–' }}</td>
+        <td>{{ p.country or '–' }}</td>
+        <td>{{ "%.5f"|format(p.lat) if p.lat else '–' }}</td>
+        <td>{{ "%.5f"|format(p.lng) if p.lng else '–' }}</td>
+        <td><a href="/articles/{{ p.article_id }}/edit">{{ p.headline or p.article_id }}</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="process-ok">Keine verdächtigen Koordinaten gefunden.</p>
+  {% endif %}
+</section>
+
+<section class="inbox-section">
   <h2>Inbox verarbeiten</h2>
   <p>Alle TIFF-Dateien im Inbox-Verzeichnis manuell einlesen und verarbeiten.</p>
   <button class="btn-primary"

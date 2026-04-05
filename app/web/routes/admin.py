@@ -16,7 +16,8 @@ log = logging.getLogger(__name__)
 _ingest_lock = threading.Lock()
 _ingest_status: dict = {"state": "idle", "message": ""}
 
-from app.db.database import get_places_without_coords, get_review_count, get_stats, search_full
+from app.db.database import (get_places_with_suspect_coords, get_places_without_coords,
+                              get_review_count, get_stats, search_full)
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -29,10 +30,11 @@ _ARCHIVE = Path(os.getenv("ARCHIVE_DIR", "/app/archive"))
 async def stats(request: Request):
     data = get_stats(_DB)
     ungeocodiert = get_places_without_coords(_DB)
+    verdaechtig = get_places_with_suspect_coords(_DB)
     return _templates.TemplateResponse(
         "stats.html",
         {"request": request, "review_count": get_review_count(_DB),
-         "ungeocodiert": ungeocodiert, **data},
+         "ungeocodiert": ungeocodiert, "verdaechtig": verdaechtig, **data},
     )
 
 
