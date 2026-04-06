@@ -19,9 +19,15 @@ _OLLAMA_HOST  = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 _OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
 # --- OpenRouter config -------------------------------------------------------
-_OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-_OPENROUTER_MODEL   = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-super-49b-v1:free")
+_OPENROUTER_API_KEY  = os.getenv("OPENROUTER_API_KEY", "")
+_OPENROUTER_MODEL    = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-super-49b-v1:free")
 _OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+# Comma-separated fallback list; defaults to OPENROUTER_MODEL as single entry
+_OPENROUTER_MODELS: list[str] = [
+    m.strip()
+    for m in os.getenv("OPENROUTER_MODELS", _OPENROUTER_MODEL).split(",")
+    if m.strip()
+]
 
 # --- LangDock config ---------------------------------------------------------
 _LANGDOCK_API_KEY = os.getenv("LANGDOCK_API_KEY", "")
@@ -38,16 +44,26 @@ def chat_json(prompt: str) -> str:
     if _PROVIDER == "ollama":
         return _chat_ollama(prompt)
     elif _PROVIDER == "openrouter":
-        return _chat_openai_compat(
-            prompt,
-            base_url=_OPENROUTER_BASE_URL,
-            api_key=_OPENROUTER_API_KEY,
-            model=_MODEL_OVERRIDE or _OPENROUTER_MODEL,
-            extra_headers={
-                "HTTP-Referer": "https://github.com/zeitungsarchiv",
-                "X-Title": "Zeitungsarchiv",
-            },
-        )
+        from openai import RateLimitError
+
+        models = [_MODEL_OVERRIDE] if _MODEL_OVERRIDE else _OPENROUTER_MODELS
+        last_exc: Exception | None = None
+        for model in models:
+            try:
+                return _chat_openai_compat(
+                    prompt,
+                    base_url=_OPENROUTER_BASE_URL,
+                    api_key=_OPENROUTER_API_KEY,
+                    model=model,
+                    extra_headers={
+                        "HTTP-Referer": "https://github.com/zeitungsarchiv",
+                        "X-Title": "Zeitungsarchiv",
+                    },
+                )
+            except RateLimitError as exc:
+                log.warning("OpenRouter model %r rate-limited, trying next in list...", model)
+                last_exc = exc
+        raise RuntimeError(f"All OpenRouter models rate-limited: {models}") from last_exc
     elif _PROVIDER == "langdock":
         if not _LANGDOCK_MODEL and not _MODEL_OVERRIDE:
             raise RuntimeError("LANGDOCK_MODEL must be set when LLM_PROVIDER=langdock")
