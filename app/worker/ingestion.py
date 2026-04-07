@@ -144,7 +144,16 @@ def ingest(
     }
 
     # Extract structured place listings (restaurants, hotels, etc.)
-    places  = extract_places(ocr_result["full_text"])
+    # Retry once on empty result — LLM may time out or return [] spuriously
+    _MAX_EXTRACT_ATTEMPTS = 2
+    places: list[dict] = []
+    for attempt in range(1, _MAX_EXTRACT_ATTEMPTS + 1):
+        places = extract_places(ocr_result["full_text"])
+        if places:
+            break
+        if attempt < _MAX_EXTRACT_ATTEMPTS:
+            log.warning("extract_places returned empty (attempt %d/%d), retrying…",
+                        attempt, _MAX_EXTRACT_ATTEMPTS)
     books   = extract_books(ocr_result["full_text"])
     recipes = extract_recipes(ocr_result["full_text"])
 
