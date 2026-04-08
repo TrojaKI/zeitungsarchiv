@@ -127,7 +127,7 @@ def extract_books(ocr_text: str) -> list[dict]:
     ocr_text = _extract_book_sections(ocr_text)
 
     try:
-        raw = chat_json(_PROMPT.format(ocr_text=ocr_text)).strip()
+        raw = chat_json(_PROMPT.format(ocr_text=ocr_text), fallback_on_empty=True).strip()
         # Strip accidental markdown fences
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]

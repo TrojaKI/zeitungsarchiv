@@ -35,35 +35,27 @@ _LANGDOCK_API_URL = os.getenv("LANGDOCK_API_URL", "https://api.langdock.com/open
 _LANGDOCK_MODEL   = os.getenv("LANGDOCK_MODEL", "")
 
 
-def chat_json(prompt: str) -> str:
+def chat_json(prompt: str, *, fallback_on_empty: bool = False) -> str:
     """
     Send prompt to the configured LLM provider and return the raw JSON string.
+
+    If *fallback_on_empty* is True and the primary provider is Ollama, the
+    response is checked for an empty JSON collection (``[]`` / ``{}``).  When
+    that happens and OPENROUTER_API_KEY is set the call is transparently
+    retried via OpenRouter so that a capable model gets a second chance.
 
     Raises RuntimeError on provider errors so callers can fall back gracefully.
     """
     if _PROVIDER == "ollama":
-        return _chat_ollama(prompt)
+        result = _chat_ollama(prompt)
+        if fallback_on_empty and _OPENROUTER_API_KEY and _is_empty_json(result):
+            log.info(
+                "chat_json: Ollama returned empty result, retrying with OpenRouter"
+            )
+            return _chat_openrouter(prompt)
+        return result
     elif _PROVIDER == "openrouter":
-        from openai import RateLimitError
-
-        models = [_MODEL_OVERRIDE] if _MODEL_OVERRIDE else _OPENROUTER_MODELS
-        last_exc: Exception | None = None
-        for model in models:
-            try:
-                return _chat_openai_compat(
-                    prompt,
-                    base_url=_OPENROUTER_BASE_URL,
-                    api_key=_OPENROUTER_API_KEY,
-                    model=model,
-                    extra_headers={
-                        "HTTP-Referer": "https://github.com/zeitungsarchiv",
-                        "X-Title": "Zeitungsarchiv",
-                    },
-                )
-            except RateLimitError as exc:
-                log.warning("OpenRouter model %r rate-limited, trying next in list...", model)
-                last_exc = exc
-        raise RuntimeError(f"All OpenRouter models rate-limited: {models}") from last_exc
+        return _chat_openrouter(prompt)
     elif _PROVIDER == "langdock":
         if not _LANGDOCK_MODEL and not _MODEL_OVERRIDE:
             raise RuntimeError("LANGDOCK_MODEL must be set when LLM_PROVIDER=langdock")
@@ -75,6 +67,36 @@ def chat_json(prompt: str) -> str:
         )
     else:
         raise RuntimeError(f"Unknown LLM_PROVIDER: {_PROVIDER!r}. Use ollama, openrouter, or langdock.")
+
+
+def _is_empty_json(raw: str) -> bool:
+    """Return True if *raw* is an empty JSON array or object (whitespace-tolerant)."""
+    stripped = raw.strip()
+    return stripped in ("[]", "{}", "[ ]", "{ }")
+
+
+def _chat_openrouter(prompt: str) -> str:
+    """Convenience wrapper: call OpenRouter with the configured model list."""
+    from openai import RateLimitError
+
+    models = [_MODEL_OVERRIDE] if _MODEL_OVERRIDE else _OPENROUTER_MODELS
+    last_exc: Exception | None = None
+    for model in models:
+        try:
+            return _chat_openai_compat(
+                prompt,
+                base_url=_OPENROUTER_BASE_URL,
+                api_key=_OPENROUTER_API_KEY,
+                model=model,
+                extra_headers={
+                    "HTTP-Referer": "https://github.com/zeitungsarchiv",
+                    "X-Title": "Zeitungsarchiv",
+                },
+            )
+        except RateLimitError:
+            log.warning("OpenRouter model %r rate-limited, trying next...", model)
+            last_exc = RateLimitError  # type: ignore[assignment]
+    raise RuntimeError(f"All OpenRouter models rate-limited: {models}") from last_exc
 
 
 def _chat_ollama(prompt: str) -> str:
