@@ -10,6 +10,14 @@ import os
 
 log = logging.getLogger(__name__)
 
+# Load .env automatically so the correct provider is used when the worker or
+# CLI is started directly (without going through app.web.main).
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # --- Common config -----------------------------------------------------------
 _PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()
 _MODEL_OVERRIDE = os.getenv("LLM_MODEL", "")
