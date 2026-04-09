@@ -32,6 +32,7 @@ async def stats(request: Request):
     ungeocodiert = get_places_without_coords(_DB)
     verdaechtig = get_places_with_suspect_coords(_DB)
     return _templates.TemplateResponse(
+        request,
         "stats.html",
         {"request": request, "review_count": get_review_count(_DB),
          "ungeocodiert": ungeocodiert, "verdaechtig": verdaechtig, **data},

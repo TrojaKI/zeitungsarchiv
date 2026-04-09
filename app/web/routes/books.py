@@ -22,8 +22,8 @@ async def books_list(request: Request, q: str = "", sort: str = "author_asc"):
     books = get_all_books(query=q, sort=sort, db_path=_DB)
     ctx = _ctx(request, books=books, q=q, sort=sort)
     if request.headers.get("hx-request"):
-        return _templates.TemplateResponse("books_results.html", ctx)
-    return _templates.TemplateResponse("books.html", ctx)
+        return _templates.TemplateResponse(request, "books_results.html", ctx)
+    return _templates.TemplateResponse(request, "books.html", ctx)
 
 
 @router.post("/books/{book_id}")

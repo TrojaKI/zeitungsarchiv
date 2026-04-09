@@ -52,6 +52,7 @@ async def article_detail(request: Request, article_id: int):
         else []
     )
     return _templates.TemplateResponse(
+        request,
         "article.html",
         _ctx(request, article=article, places=places, books=books,
              recipes=recipes, group_pages=group_pages),
@@ -72,6 +73,7 @@ async def article_edit(request: Request, article_id: int):
     books   = get_books(article_id, _DB)
     recipes = get_recipes(article_id, _DB)
     return _templates.TemplateResponse(
+        request,
         "edit.html",
         _ctx(request, article=article, places=places, books=books, recipes=recipes),
     )

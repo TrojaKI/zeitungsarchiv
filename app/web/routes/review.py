@@ -25,6 +25,7 @@ async def review_queue(request: Request):
             except (json.JSONDecodeError, TypeError):
                 a["tags"] = []
     return _templates.TemplateResponse(
+        request,
         "review.html",
         {
             "request": request,

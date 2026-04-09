@@ -46,8 +46,8 @@ async def places_list(
                geocoded=geocoded, **opts)
     # HTMX partial request: return only the results fragment
     if request.headers.get("hx-request"):
-        return _templates.TemplateResponse("places_results.html", ctx)
-    return _templates.TemplateResponse("places.html", ctx)
+        return _templates.TemplateResponse(request, "places_results.html", ctx)
+    return _templates.TemplateResponse(request, "places.html", ctx)
 
 
 @router.get("/places/map-data", response_class=JSONResponse)

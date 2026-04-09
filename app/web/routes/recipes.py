@@ -22,8 +22,8 @@ async def recipes_list(request: Request, q: str = "", sort: str = "category_asc"
     recipes = get_all_recipes(query=q, sort=sort, db_path=_DB)
     ctx = _ctx(request, recipes=recipes, q=q, sort=sort)
     if request.headers.get("hx-request"):
-        return _templates.TemplateResponse("recipes_results.html", ctx)
-    return _templates.TemplateResponse("recipes.html", ctx)
+        return _templates.TemplateResponse(request, "recipes_results.html", ctx)
+    return _templates.TemplateResponse(request, "recipes.html", ctx)
 
 
 @router.post("/recipes/{recipe_id}")

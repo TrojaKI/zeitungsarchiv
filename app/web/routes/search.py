@@ -42,6 +42,7 @@ async def index(request: Request):
     opts = get_filter_options(_DB)
     results = _add_display_headlines(search_full(limit=20, db_path=_DB), _DB)
     return _templates.TemplateResponse(
+        request,
         "index.html",
         _ctx(request, results=results, q="", newspaper="", category="",
              section="", date_from="", date_to="", location="", country="",
@@ -94,5 +95,5 @@ async def search(
         **opts,
     )
     if request.headers.get("hx-request"):
-        return _templates.TemplateResponse("search_results.html", ctx)
-    return _templates.TemplateResponse("index.html", ctx)
+        return _templates.TemplateResponse(request, "search_results.html", ctx)
+    return _templates.TemplateResponse(request, "index.html", ctx)

@@ -15,7 +15,7 @@ services:
       #- OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       #- OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5vl:3b}
       - LLM_PROVIDER=$LLM_PROVIDER
-      - OPENROUTER_MODEL=$OPENROUTER_MODEL
+      - OPENROUTER_MODELS=$OPENROUTER_MODELS
       - OPENROUTER_API_KEY=$OPENROUTER_API_KEY
       - INBOX_DIR=/app/inbox
       - ARCHIVE_DIR=/app/archive
