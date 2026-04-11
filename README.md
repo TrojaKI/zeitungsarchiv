@@ -48,8 +48,7 @@ Scans werden per OCR in Text umgewandelt, mit KI-Metadaten angereichert und in e
 | Python | ≥ 3.12 | Laufzeitumgebung |
 | Tesseract | ≥ 5 + Sprachpaket `deu` | OCR |
 | OpenCV | ≥ 4.9 | Bildvorverarbeitung |
-| Ollama | aktuell | Lokale KI-Metadaten |
-| OpenCV | ≥ 4.9 | Scan-Stitching (mehrseitige Scans) — bereits in den Systemabhängigkeiten |
+| Ollama | aktuell | Lokale KI-Metadaten (optional, alternativ OpenRouter/LangDock) |
 | Docker + Compose | aktuell | Containerisierter Betrieb (optional) |
 
 ---
@@ -261,7 +260,7 @@ Artikel, die über mehrere Seiten gehen, folgen der `_NN`-Konvention:
 
 1. Seiten einscannen → `inbox/artikel_01.tif`, `inbox/artikel_02.tif`
 2. `zeitungsarchiv process` ausführen
-3. Hugin stitcht die Seiten automatisch zu `artikel_00.tif`
+3. OpenCV stitcht die Seiten automatisch zu `artikel_00.tif`
 4. Nur `_00` wird importiert — Rohseiten landen in `archive/artikel_00/parts/`
 
 Ist `_00` bereits vorhanden, wird das Stitching übersprungen.
@@ -303,7 +302,8 @@ Das System unterstützt drei Provider für KI-Metadatenextraktion:
 | Variable | Standard | Beschreibung |
 |---|---|---|
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama-Server-URL |
-| `OLLAMA_MODEL` | `qwen2.5vl:3b` | Modell |
+| `OLLAMA_MODEL` | `qwen2.5vl:3b` | Primäres Modell |
+| `OLLAMA_MODELS` | _(wie OLLAMA_MODEL)_ | Kommagetrennte Fallback-Liste |
 
 In Docker zeigt `OLLAMA_HOST` auf `http://host.docker.internal:11434`.
 
@@ -312,7 +312,8 @@ In Docker zeigt `OLLAMA_HOST` auf `http://host.docker.internal:11434`.
 | Variable | Standard | Beschreibung |
 |---|---|---|
 | `OPENROUTER_API_KEY` | — | API-Key von openrouter.ai |
-| `OPENROUTER_MODEL` | `nvidia/nemotron-3-super-120b-a12b:free` | Modell-ID |
+| `OPENROUTER_MODEL` | `meta-llama/llama-3.1-8b-instruct:free` | Primäres Modell |
+| `OPENROUTER_MODELS` | _(wie OPENROUTER_MODEL)_ | Kommagetrennte Fallback-Liste |
 
 **LangDock (Enterprise):**
 
@@ -333,14 +334,7 @@ Lokal: `export VARIABLE=wert` oder `.env`-Datei anlegen.
 source .venv/bin/activate
 pip install pytest   # falls noch nicht installiert
 
-# Unit-Tests (schnell, keine externen Abhängigkeiten)
-python -m pytest tests/test_stitch_pipeline.py -v
-
-# Integrations-Tests (benötigt hugin-tools + Beispieldateien in examples/)
-python -m pytest tests/test_stitch_integration.py -v
-
-# Alle Tests
 python -m pytest tests/ -v
 ```
 
-Die Integrations-Tests werden automatisch übersprungen, wenn die Beispieldateien nicht vorhanden sind.
+Integrations-Tests werden automatisch übersprungen, wenn Beispieldateien in `examples/` fehlen.
