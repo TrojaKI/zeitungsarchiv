@@ -147,6 +147,7 @@ def ingest(
     # Retry once on empty result — LLM may time out or return [] spuriously
     _MAX_EXTRACT_ATTEMPTS = 2
     places: list[dict] = []
+    log.info("Extracting places for %s (text_len=%d)", tiff_path.name, len(ocr_result["full_text"]))
     for attempt in range(1, _MAX_EXTRACT_ATTEMPTS + 1):
         places = extract_places(ocr_result["full_text"])
         if places:
@@ -154,6 +155,9 @@ def ingest(
         if attempt < _MAX_EXTRACT_ATTEMPTS:
             log.warning("extract_places returned empty (attempt %d/%d), retrying…",
                         attempt, _MAX_EXTRACT_ATTEMPTS)
+    if not places:
+        log.warning("No places extracted for %s after %d attempt(s)",
+                    tiff_path.name, _MAX_EXTRACT_ATTEMPTS)
     books   = extract_books(ocr_result["full_text"])
     recipes = extract_recipes(ocr_result["full_text"])
 

@@ -77,8 +77,10 @@ def chat_json(prompt: str, *, fallback_on_empty: bool = False) -> str:
         raise RuntimeError(f"Unknown LLM_PROVIDER: {_PROVIDER!r}. Use ollama, openrouter, or langdock.")
 
 
-def _is_empty_json(raw: str) -> bool:
-    """Return True if *raw* is an empty JSON array or object (whitespace-tolerant)."""
+def _is_empty_json(raw: str | None) -> bool:
+    """Return True if *raw* is None, empty, or an empty JSON array/object."""
+    if not raw:
+        return True
     stripped = raw.strip()
     return stripped in ("[]", "{}", "[ ]", "{ }")
 
@@ -119,7 +121,10 @@ def _chat_ollama(prompt: str) -> str:
         messages=[{"role": "user", "content": prompt}],
         format="json",
     )
-    return response.message.content
+    content = response.message.content
+    if content is None:
+        raise RuntimeError(f"Ollama returned null content (model={model})")
+    return content
 
 
 def _chat_openai_compat(
@@ -143,4 +148,7 @@ def _chat_openai_compat(
         model=model,
         messages=[{"role": "user", "content": prompt}],
     )
-    return completion.choices[0].message.content
+    content = completion.choices[0].message.content
+    if content is None:
+        raise RuntimeError(f"LLM returned null content (model={model}, base_url={base_url})")
+    return content

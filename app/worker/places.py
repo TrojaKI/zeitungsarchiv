@@ -84,7 +84,7 @@ def extract_places(ocr_text: str) -> list[dict]:
         return [_clean(p) for p in data if isinstance(p, dict)]
 
     except Exception as exc:
-        log.error("extract_places failed: %s", exc)
+        log.error("extract_places failed: %s", exc, exc_info=True)
         return []
 
 
