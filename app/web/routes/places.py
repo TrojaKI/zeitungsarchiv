@@ -30,20 +30,32 @@ async def places_cities(country: str = ""):
     return HTMLResponse(options)
 
 
+@router.get("/places/states", response_class=HTMLResponse)
+async def places_states():
+    """Return state <option> elements for HTMX dropdown update."""
+    opts = get_place_filter_options(db_path=_DB)
+    options = '<option value="">Alle Bundesländer</option>'
+    for s in opts["states"]:
+        options += f'<option value="{s}">{s}</option>'
+    return HTMLResponse(options)
+
+
 @router.get("/places", response_class=HTMLResponse)
 async def places_list(
     request: Request,
     q: str = "",
     city: str = "",
     country: str = "",
+    state: str = "",
+    is_active: str = "active",
     sort: str = "country_asc",
     geocoded: str = "",
 ):
-    places = get_all_places(query=q, city=city, country=country, sort=sort,
-                            geocoded=geocoded, db_path=_DB)
+    places = get_all_places(query=q, city=city, country=country, state=state,
+                            is_active=is_active, sort=sort, geocoded=geocoded, db_path=_DB)
     opts = get_place_filter_options(country=country, db_path=_DB)
-    ctx = _ctx(request, places=places, q=q, city=city, country=country, sort=sort,
-               geocoded=geocoded, **opts)
+    ctx = _ctx(request, places=places, q=q, city=city, country=country, state=state,
+               is_active=is_active, sort=sort, geocoded=geocoded, **opts)
     # HTMX partial request: return only the results fragment
     if request.headers.get("hx-request"):
         return _templates.TemplateResponse(request, "places_results.html", ctx)
@@ -51,9 +63,11 @@ async def places_list(
 
 
 @router.get("/places/map-data", response_class=JSONResponse)
-async def places_map_data(q: str = "", city: str = "", country: str = "", geocoded: str = ""):
-    """Return geocoded places as JSON for the map view, respecting active filters."""
-    places = get_geocoded_places(query=q, city=city, country=country, geocoded=geocoded, db_path=_DB)
+async def places_map_data(q: str = "", city: str = "", country: str = "",
+                          state: str = "", geocoded: str = ""):
+    """Return geocoded active places as JSON for the map view, respecting active filters."""
+    places = get_geocoded_places(query=q, city=city, country=country, state=state,
+                                 geocoded=geocoded, db_path=_DB)
     return JSONResponse(content=places)
 
 
@@ -67,12 +81,14 @@ async def place_update(
     postal_code: str = Form(""),
     city: str = Form(""),
     country: str = Form(""),
+    state: str = Form(""),
     phone: str = Form(""),
     hours: str = Form(""),
     url: str = Form(""),
     rating: str = Form(""),
     lat: str = Form(""),
     lng: str = Form(""),
+    is_active: int = Form(1),
 ):
     fields: dict = {
         "name":        name or None,
@@ -81,10 +97,12 @@ async def place_update(
         "postal_code": postal_code or None,
         "city":        city or None,
         "country":     country or None,
+        "state":       state or None,
         "phone":       phone or None,
         "hours":       hours or None,
         "url":         url or None,
         "rating":      rating or None,
+        "is_active":   is_active,
     }
     try:
         if lat:
@@ -117,11 +135,11 @@ async def place_geocode(place_id: int):
     place = get_place(place_id, _DB)
     if not place:
         return HTMLResponse('<span class="geo-error">Ort nicht gefunden</span>')
-    coords = _geocode(place)
-    if coords:
-        lat, lng = coords
+    result = _geocode(place)
+    if result:
+        lat, lng = result["lat"], result["lng"]
         # Update the canonical places row using places.id (place["id"])
-        update_place_coords(place["id"], lat, lng, db_path=_DB)
+        update_place_coords(place["id"], lat, lng, state=result.get("state"), db_path=_DB)
         # OOB swaps keep the form inputs in sync so a subsequent save does not
         # overwrite the freshly geocoded coordinates with stale form values.
         return HTMLResponse(
@@ -167,6 +185,18 @@ async def place_merge_candidates(canonical_id: int):
         label += f" – {c['article_count']} Artikel"
         opts += f'<option value="{c["id"]}">{label}</option>'
     return HTMLResponse(opts)
+
+
+@router.post("/places/canonical/{canonical_id}/set-active")
+async def place_set_active(canonical_id: int, is_active: int = Form(...)):
+    """Toggle is_active on the canonical places row."""
+    from app.db.database import get_connection
+    with get_connection(_DB) as conn:
+        conn.execute("UPDATE places SET is_active = ? WHERE id = ?", (is_active, canonical_id))
+    from fastapi.responses import Response
+    r = Response(status_code=204)
+    r.headers["HX-Refresh"] = "true"
+    return r
 
 
 @router.post("/places/canonical/{canonical_id}/confirm-coords", response_class=HTMLResponse)

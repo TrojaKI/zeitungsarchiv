@@ -45,6 +45,17 @@
           <option value="{{ c }}" {% if c == city %}selected{% endif %}>{{ c }}</option>
         {% endfor %}
       </select>
+      <select name="state" id="state-select">
+        <option value="">Alle Bundesländer</option>
+        {% for s in states %}
+          <option value="{{ s }}" {% if s == state %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <select name="is_active">
+        <option value="active"   {% if is_active == 'active'   %}selected{% endif %}>Aktiv</option>
+        <option value="all"      {% if is_active == 'all'      %}selected{% endif %}>Alle</option>
+        <option value="inactive" {% if is_active == 'inactive' %}selected{% endif %}>Inaktiv</option>
+      </select>
       <select name="geocoded">
         <option value="">Alle</option>
         <option value="geocoded" {% if geocoded == 'geocoded' %}selected{% endif %}>Geocodiert</option>
@@ -81,6 +92,8 @@ L.Icon.Default.mergeOptions({
 
 let mapInitialized = false;
 let leafletMap = null;
+let userHasNavigated = false;
+const MAP_STORAGE_KEY = 'places_map_state';
 
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -97,6 +110,13 @@ let mapMarkers = [];
 function getFilterParams() {
   const form = document.querySelector('form[hx-get="/places"]');
   return new URLSearchParams(new FormData(form)).toString();
+}
+
+function saveMapState() {
+  const c = leafletMap.getCenter();
+  sessionStorage.setItem(MAP_STORAGE_KEY, JSON.stringify({
+    zoom: leafletMap.getZoom(), lat: c.lat, lng: c.lng
+  }));
 }
 
 function loadMapMarkers() {
@@ -137,7 +157,8 @@ function loadMapMarkers() {
         bounds.push([p.lat, p.lng]);
         mapMarkers.push(marker);
       });
-      if (bounds.length) {
+      // Only auto-fit if user hasn't manually navigated yet
+      if (bounds.length && !userHasNavigated) {
         leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
       }
     });
@@ -147,11 +168,24 @@ function loadMapMarkers() {
 
 function initMap() {
   mapInitialized = true;
-  leafletMap = L.map('map').setView([47.5, 14.0], 7);
+  const saved = sessionStorage.getItem(MAP_STORAGE_KEY);
+  const savedView = saved ? JSON.parse(saved) : null;
+  leafletMap = L.map('map');
+  if (savedView) {
+    leafletMap.setView([savedView.lat, savedView.lng], savedView.zoom);
+    userHasNavigated = true;
+  } else {
+    leafletMap.setView([47.5, 14.0], 7);
+  }
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19,
   }).addTo(leafletMap);
+  // Save position after any user pan/zoom (also captures fitBounds result on first open)
+  leafletMap.on('moveend zoomend', function() {
+    saveMapState();
+    userHasNavigated = true;
+  });
   loadMapMarkers();
 }
 

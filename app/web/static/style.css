@@ -724,6 +724,9 @@ details summary:hover { color: var(--accent); }
 }
 .place-grid .full-width { grid-column: 1 / -1; }
 .place-grid input, .place-grid textarea { font: inherit; font-size: .85rem; }
+.place-active-row { margin: .4rem 0; }
+.checkbox-label { display: flex; align-items: center; gap: .4rem; font-size: .85rem; cursor: pointer; }
+.place-closed { text-decoration: line-through; opacity: 0.6; }
 
 /* ═══════════════════════════════════════════════════════════════════
    STATS PAGE

@@ -206,10 +206,14 @@ def init_db(db_path: Path = _DEFAULT_DB_PATH) -> None:
         for col, sql in migrations:
             if col not in existing:
                 conn.execute(sql)
-        # Migrate places table: add geocode_source column
+        # Migrate places table: add columns introduced after initial schema
         places_cols = {row[1] for row in conn.execute("PRAGMA table_info(places)")}
         if "geocode_source" not in places_cols:
             conn.execute("ALTER TABLE places ADD COLUMN geocode_source TEXT")
+        if "is_active" not in places_cols:
+            conn.execute("ALTER TABLE places ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+        if "state" not in places_cols:
+            conn.execute("ALTER TABLE places ADD COLUMN state TEXT")
 
         # Migrate: create books and recipes tables if not yet present
         conn.executescript("""
@@ -435,7 +439,8 @@ def search_full(
 
 
 _PLACE_FIELDS = frozenset({
-    "name", "address", "postal_code", "city", "country", "phone", "hours", "url", "lat", "lng"
+    "name", "address", "postal_code", "city", "country",
+    "phone", "hours", "url", "lat", "lng", "is_active", "state"
 })
 _PA_FIELDS = frozenset({"description", "rating"})
 
@@ -492,12 +497,17 @@ def update_place(pa_id: int, fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> 
 
 def update_place_coords(place_id: int, lat: float, lng: float,
                         source: str = "nominatim",
+                        state: str | None = None,
                         db_path: Path = _DEFAULT_DB_PATH) -> None:
-    """Store geocoded coordinates for a canonical place (places.id)."""
+    """Store geocoded coordinates for a canonical place (places.id).
+
+    state is only written when provided — COALESCE keeps any manually set value.
+    """
     with get_connection(db_path) as conn:
         conn.execute(
-            "UPDATE places SET lat = ?, lng = ?, geocode_source = ? WHERE id = ?",
-            (lat, lng, source, place_id),
+            "UPDATE places SET lat = ?, lng = ?, geocode_source = ?,"
+            " state = COALESCE(?, state) WHERE id = ?",
+            (lat, lng, source, state, place_id),
         )
 
 
@@ -551,6 +561,7 @@ def get_geocoded_places(
     query: str = "",
     city: str = "",
     country: str = "",
+    state: str = "",
     geocoded: str = "",
     db_path: Path = _DEFAULT_DB_PATH,
 ) -> list[dict]:
@@ -558,6 +569,7 @@ def get_geocoded_places(
 
     Returns one row per article mention so the map JS can group by place.id
     and build multi-article popups for places referenced in several articles.
+    Only active places (is_active=1) are included — closed venues are hidden from map.
     """
     params: list = []
     if geocoded == "not_geocoded":
@@ -571,7 +583,7 @@ def get_geocoded_places(
         FROM places p
         JOIN place_articles pa ON pa.place_id = p.id
         JOIN articles a ON a.id = pa.article_id
-        WHERE {geo_condition}
+        WHERE {geo_condition} AND p.is_active = 1
     """
     if query:
         q = f"%{query.lower()}%"
@@ -588,6 +600,9 @@ def get_geocoded_places(
     elif country:
         sql += " AND unicode_lower(p.country) = ?"
         params.append(country.lower())
+    if state:
+        sql += " AND unicode_lower(p.state) = ?"
+        params.append(state.lower())
     sql += " ORDER BY p.name"
     with get_connection(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
@@ -620,6 +635,8 @@ def get_all_places(
     query: str = "",
     city: str = "",
     country: str = "",
+    state: str = "",
+    is_active: str = "active",
     sort: str = "country_asc",
     geocoded: str = "",
     db_path: Path = _DEFAULT_DB_PATH,
@@ -665,6 +682,13 @@ def get_all_places(
         sql += " AND p.lat IS NOT NULL AND p.lng IS NOT NULL"
     elif geocoded == "not_geocoded":
         sql += " AND (p.lat IS NULL OR p.lng IS NULL)"
+    if is_active == "active":
+        sql += " AND p.is_active = 1"
+    elif is_active == "inactive":
+        sql += " AND p.is_active = 0"
+    if state:
+        sql += " AND unicode_lower(p.state) = ?"
+        params.append(state.lower())
     sql += f" GROUP BY p.id ORDER BY {order}"
     with get_connection(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
@@ -714,9 +738,10 @@ def merge_places(source_id: int, target_id: int, db_path: Path = _DEFAULT_DB_PAT
 
 
 def get_place_filter_options(country: str = "", db_path: Path = _DEFAULT_DB_PATH) -> dict:
-    """Return distinct countries and cities for place filter dropdowns.
+    """Return distinct countries, cities, and states for place filter dropdowns.
 
     If country is given, cities are restricted to that country.
+    States are always returned as a global list (no cascade needed).
     """
     with get_connection(db_path) as conn:
         countries = [r[0] for r in conn.execute(
@@ -736,7 +761,10 @@ def get_place_filter_options(country: str = "", db_path: Path = _DEFAULT_DB_PATH
             cities = [r[0] for r in conn.execute(
                 "SELECT DISTINCT city FROM places WHERE city IS NOT NULL ORDER BY city"
             ).fetchall()]
-    return {"countries": countries, "cities": cities}
+        states = [r[0] for r in conn.execute(
+            "SELECT DISTINCT state FROM places WHERE state IS NOT NULL ORDER BY state"
+        ).fetchall()]
+    return {"countries": countries, "cities": cities, "states": states}
 
 
 def get_review_count(db_path: Path = _DEFAULT_DB_PATH) -> int:
@@ -884,6 +912,7 @@ def get_places(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
                       p.id AS place_id,
                       p.name, p.address, p.postal_code, p.city, p.country,
                       p.phone, p.hours, p.url, p.lat, p.lng,
+                      p.is_active, p.state,
                       pa.description, pa.rating
                FROM place_articles pa
                JOIN places p ON p.id = pa.place_id

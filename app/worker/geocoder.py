@@ -15,14 +15,10 @@ _USER_AGENT = "Zeitungsarchiv/1.0"
 _RATE_LIMIT_SECONDS = 1.1
 
 
-def geocode_place(place: dict) -> tuple[float, float] | None:
-    """
-    Geocode a single place dict using Nominatim.
+def geocode_place(place: dict) -> dict | None:
+    """Geocode a single place dict using Nominatim.
 
-    Tries a specific query first (name + address + city + country),
-    then falls back to city + country only.
-
-    Returns (lat, lng) on success, None on failure.
+    Returns {"lat": float, "lng": float, "state": str | None} on success, None on failure.
     """
     queries = _build_queries(place)
     for q in queries:
@@ -81,15 +77,16 @@ def _build_queries(place: dict) -> list[str]:
     return queries
 
 
-def _nominatim_search(query: str) -> tuple[float, float] | None:
-    """
-    Execute a single Nominatim search and return (lat, lng) for the first result.
-    Returns None if no results or on any error.
+def _nominatim_search(query: str) -> dict | None:
+    """Execute a single Nominatim search and return result dict for the first hit.
+
+    Returns {"lat": float, "lng": float, "state": str | None}, or None on failure.
     """
     params = urllib.parse.urlencode({
         "q": query,
         "format": "json",
         "limit": 1,
+        "addressdetails": 1,
     })
     url = f"{_NOMINATIM_URL}?{params}"
     req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
@@ -99,8 +96,9 @@ def _nominatim_search(query: str) -> tuple[float, float] | None:
         if data:
             lat = float(data[0]["lat"])
             lng = float(data[0]["lon"])
-            log.debug("Geocoded %r -> (%.4f, %.4f)", query, lat, lng)
-            return lat, lng
+            state = data[0].get("address", {}).get("state")
+            log.debug("Geocoded %r -> (%.4f, %.4f) state=%r", query, lat, lng, state)
+            return {"lat": lat, "lng": lng, "state": state}
     except Exception as exc:
         log.warning("Nominatim error for %r: %s", query, exc)
     return None
@@ -123,12 +121,13 @@ def geocode_all_places(db_path: Path) -> int:
     log.info("Geocoding %d place(s)...", len(pending))
     success = 0
     for place in pending:
-        coords = geocode_place(place)
-        if coords:
-            lat, lng = coords
-            update_place_coords(place["id"], lat, lng, db_path=db_path)
-            log.info("Geocoded place id=%d %r -> (%.4f, %.4f)",
-                     place["id"], place.get("name"), lat, lng)
+        result = geocode_place(place)
+        if result:
+            update_place_coords(place["id"], result["lat"], result["lng"],
+                                state=result.get("state"), db_path=db_path)
+            log.info("Geocoded place id=%d %r -> (%.4f, %.4f) state=%r",
+                     place["id"], place.get("name"), result["lat"], result["lng"],
+                     result.get("state"))
             success += 1
         else:
             log.warning("Could not geocode place id=%d %r",

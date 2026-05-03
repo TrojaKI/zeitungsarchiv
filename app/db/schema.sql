@@ -113,6 +113,8 @@ CREATE TABLE IF NOT EXISTS places (
     lat         REAL,           -- WGS84 latitude (from Nominatim geocoding)
     lng         REAL,           -- WGS84 longitude (from Nominatim geocoding)
     geocode_source TEXT,        -- 'nominatim' | 'manual' | NULL = unbekannt/verdächtig
+    is_active   INTEGER NOT NULL DEFAULT 1,  -- 1 = still exists, 0 = closed/gone
+    state       TEXT,                        -- federal state (e.g. "Wien", from Nominatim address.state)
     name_key    TEXT NOT NULL,  -- LOWER(TRIM(name)) for deduplication
     city_key    TEXT NOT NULL   -- LOWER(TRIM(COALESCE(city,''))) for deduplication
 );

@@ -8,7 +8,7 @@
 {% endmacro %}
 
 {% if places %}
-{% set _base = '/places?q=' ~ q ~ '&city=' ~ city ~ '&country=' ~ country %}
+{% set _base = '/places?q=' ~ q ~ '&city=' ~ city ~ '&country=' ~ country ~ '&state=' ~ state ~ '&is_active=' ~ is_active %}
 <p class="places-count">{{ places | length }} Eintrag/Einträge</p>
 <table class="places-table">
   <thead>
@@ -23,7 +23,7 @@
   </thead>
   <tbody>
     {% for p in places %}
-    <tr>
+    <tr{% if not p.is_active %} class="place-inactive"{% endif %}>
       <td>
         <strong>
           {% if p.lat %}&#x1F4CD;{% else %}<span title="Nicht geocodiert">&#x26A0;</span>{% endif %}
@@ -31,6 +31,13 @@
         </strong>
         {% if p.description %}<br><small>{{ p.description }}</small>{% endif %}
         <br>
+        <form hx-post="/places/canonical/{{ p.id }}/set-active" hx-swap="none" style="display:inline">
+          <input type="hidden" name="is_active" value="{{ 0 if p.is_active else 1 }}">
+          <button type="submit" class="merge-toggle"
+                  title="{{ 'Als geschlossen markieren' if p.is_active else 'Als aktiv markieren' }}">
+            {{ '✓ aktiv' if p.is_active else '✕ geschlossen' }}
+          </button>
+        </form>
         <button class="merge-toggle" type="button"
                 onclick="toggleMerge(this, {{ p.id }})"
                 title="Zusammenführen">⤵ zusammenführen</button>
@@ -48,7 +55,10 @@
         </div>
       </td>
       <td>{{ p.address or '–' }}</td>
-      <td>{% if p.postal_code %}{{ p.postal_code }} {% endif %}{{ p.city or '–' }}</td>
+      <td>
+        {% if p.postal_code %}{{ p.postal_code }} {% endif %}{{ p.city or '–' }}
+        {% if p.state %}<br><small style="color:#9ca3af">{{ p.state }}</small>{% endif %}
+      </td>
       <td>{{ p.country or '–' }}</td>
       <td>{{ p.phone or '–' }}</td>
       <td>{{ p.hours or '–' }}</td>
@@ -79,6 +89,8 @@
 .merge-toggle:hover { color: #2563eb; }
 .merge-form { margin-top: .3rem; }
 .merge-form form { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+.place-inactive { opacity: 0.5; }
+.place-inactive td:first-child strong { text-decoration: line-through; }
 </style>
 <script>
 function toggleMerge(btn, placeId) {
