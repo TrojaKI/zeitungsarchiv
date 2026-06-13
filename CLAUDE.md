@@ -88,5 +88,15 @@ Einstiegspunkt: `from app.llm.provider import chat_json`
 
 ---
 
+## Wiki / Second Brain
+
+Projektwissen (Architektur, ADRs, Log, offene Fragen) liegt im Obsidian-Vault:
+`~/Documents/Obsidian/second_brain/02 Projects/Zeitungsarchiv/`
+(`index.md` · `overview.md` · `architecture.md` · `decisions.md` · `log.md` · `open_questions.md`).
+Nach abgeschlossenen Arbeitsschritten dort `log.md` nachziehen (Skill `/log-obsidian`),
+neue Architektur-Entscheidungen als ADR in `decisions.md`.
+
+---
+
 ## Style
 Follow @~/.claude/docs/STYLE.md for all coding conventions.
