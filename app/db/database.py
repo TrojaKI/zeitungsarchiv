@@ -193,6 +193,8 @@ def init_db(db_path: Path = _DEFAULT_DB_PATH) -> None:
         if "place_articles" not in db_tables:
             _migrate_places_normalize(conn)
 
+        # Drop before executescript so the new schema can recreate it with the source-check
+        conn.execute("DROP TRIGGER IF EXISTS place_articles_cleanup")
         conn.executescript(schema)
         # Migrate existing DBs: add columns introduced after initial schema
         existing = {row[1] for row in conn.execute("PRAGMA table_info(articles)")}
@@ -214,6 +216,10 @@ def init_db(db_path: Path = _DEFAULT_DB_PATH) -> None:
             conn.execute("ALTER TABLE places ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
         if "state" not in places_cols:
             conn.execute("ALTER TABLE places ADD COLUMN state TEXT")
+        if "source" not in places_cols:
+            conn.execute("ALTER TABLE places ADD COLUMN source TEXT NOT NULL DEFAULT 'article'")
+        if "description" not in places_cols:
+            conn.execute("ALTER TABLE places ADD COLUMN description TEXT")
 
         # Migrate: create books and recipes tables if not yet present
         conn.executescript("""
@@ -578,11 +584,11 @@ def get_geocoded_places(
         # default ("" or "geocoded"): only show places that can be pinned on the map
         geo_condition = "p.lat IS NOT NULL AND p.lng IS NOT NULL"
     sql = f"""
-        SELECT p.id, p.name, p.city, p.country, p.lat, p.lng,
+        SELECT p.id, p.name, p.city, p.country, p.lat, p.lng, p.source,
                pa.description, pa.rating, pa.article_id, a.headline
         FROM places p
-        JOIN place_articles pa ON pa.place_id = p.id
-        JOIN articles a ON a.id = pa.article_id
+        LEFT JOIN place_articles pa ON pa.place_id = p.id
+        LEFT JOIN articles a ON a.id = pa.article_id
         WHERE {geo_condition} AND p.is_active = 1
     """
     if query:
@@ -617,6 +623,79 @@ def delete_place(pa_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
     """
     with get_connection(db_path) as conn:
         conn.execute("DELETE FROM place_articles WHERE id = ?", (pa_id,))
+
+
+# ---------------------------------------------------------------------------
+# Manual place CRUD (no place_articles link, source='manual')
+# ---------------------------------------------------------------------------
+
+_MANUAL_PLACE_FIELDS = (
+    "name", "description", "address", "postal_code", "city",
+    "country", "phone", "hours", "url", "is_active", "lat", "lng",
+)
+
+
+def insert_manual_place(fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> int:
+    """Insert a manually entered place (no article link). Returns places.id."""
+    name = (fields.get("name") or "").strip()
+    if not name:
+        raise ValueError("name is required")
+    city = (fields.get("city") or "").strip()
+    with get_connection(db_path) as conn:
+        cursor = conn.execute(
+            """INSERT INTO places
+               (name, description, address, postal_code, city, country, phone, hours, url,
+                source, name_key, city_key)
+               VALUES (:name, :description, :address, :postal_code, :city, :country,
+                       :phone, :hours, :url, 'manual',
+                       unicode_lower(:name_key), unicode_lower(:city_key))""",
+            {
+                "name": name,
+                "description": fields.get("description") or None,
+                "address": fields.get("address") or None,
+                "postal_code": fields.get("postal_code") or None,
+                "city": city or None,
+                "country": fields.get("country") or None,
+                "phone": fields.get("phone") or None,
+                "hours": fields.get("hours") or None,
+                "url": fields.get("url") or None,
+                "name_key": name.lower(),
+                "city_key": city.lower(),
+            },
+        )
+        return cursor.lastrowid  # type: ignore[return-value]
+
+
+def get_manual_place(place_id: int, db_path: Path = _DEFAULT_DB_PATH) -> dict | None:
+    """Return a manual place by places.id, or None if not found / not manual."""
+    with get_connection(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM places WHERE id = ? AND source = 'manual'", (place_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def update_manual_place(place_id: int, fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Update canonical fields of a manual place."""
+    updates = {k: v for k, v in fields.items() if k in _MANUAL_PLACE_FIELDS}
+    if not updates:
+        return
+    if "name" in updates or "city" in updates:
+        updates["name_key"] = (updates.get("name") or "").lower().strip()
+        updates["city_key"] = (updates.get("city") or "").lower().strip()
+    set_clause = ", ".join(f"{k} = :{k}" for k in updates)
+    updates["_id"] = place_id
+    with get_connection(db_path) as conn:
+        conn.execute(
+            f"UPDATE places SET {set_clause} WHERE id = :_id AND source = 'manual'",
+            updates,
+        )
+
+
+def delete_manual_place(place_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Delete a manually entered place by places.id."""
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM places WHERE id = ? AND source = 'manual'", (place_id,))
 
 
 def get_place(pa_id: int, db_path: Path = _DEFAULT_DB_PATH) -> dict | None:
@@ -659,8 +738,8 @@ def get_all_places(
                    json_object('id', pa.article_id, 'headline', a.headline)
                ) AS articles_json
         FROM places p
-        JOIN place_articles pa ON pa.place_id = p.id
-        JOIN articles a ON a.id = pa.article_id
+        LEFT JOIN place_articles pa ON pa.place_id = p.id
+        LEFT JOIN articles a ON a.id = pa.article_id
         WHERE 1=1
     """
     if query:
@@ -695,7 +774,8 @@ def get_all_places(
     result = []
     for r in rows:
         row = dict(r)
-        row["articles"] = json.loads(row.pop("articles_json", "[]"))
+        raw = json.loads(row.pop("articles_json", "[]"))
+        row["articles"] = [a for a in raw if a.get("id") is not None]
         result.append(row)
     return result
 

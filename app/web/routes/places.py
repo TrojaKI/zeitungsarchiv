@@ -7,9 +7,11 @@ from pathlib import Path
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-from app.db.database import (delete_place, get_all_places, get_geocoded_places,
-                              get_place, get_place_filter_options, get_review_count,
-                              merge_places, update_place, update_place_coords)
+from app.db.database import (delete_manual_place, delete_place, get_all_places,
+                              get_geocoded_places, get_manual_place, get_place,
+                              get_place_filter_options, get_review_count,
+                              insert_manual_place, merge_places, update_manual_place,
+                              update_place, update_place_coords)
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -38,6 +40,99 @@ async def places_states():
     for s in opts["states"]:
         options += f'<option value="{s}">{s}</option>'
     return HTMLResponse(options)
+
+
+@router.get("/places/new-form", response_class=HTMLResponse)
+async def places_new_form(request: Request):
+    """Return the inline manual-place creation form partial."""
+    return _templates.TemplateResponse(request, "places_new_form.html", {"request": request})
+
+
+@router.post("/places/create")
+async def place_create(
+    name: str = Form(""),
+    description: str = Form(""),
+    address: str = Form(""),
+    postal_code: str = Form(""),
+    city: str = Form(""),
+    country: str = Form(""),
+    phone: str = Form(""),
+    hours: str = Form(""),
+    url: str = Form(""),
+):
+    if not name.strip():
+        return HTMLResponse("Name ist ein Pflichtfeld.", status_code=400)
+    try:
+        insert_manual_place(
+            {"name": name, "description": description, "address": address,
+             "postal_code": postal_code, "city": city, "country": country,
+             "phone": phone, "hours": hours, "url": url},
+            _DB,
+        )
+    except sqlite3.IntegrityError:
+        return HTMLResponse(
+            "Ein Ort mit diesem Namen und dieser Stadt existiert bereits.", status_code=409
+        )
+    return RedirectResponse("/places", status_code=303)
+
+
+@router.post("/places/manual/{place_id}")
+async def manual_place_update(
+    place_id: int,
+    name: str = Form(""),
+    description: str = Form(""),
+    address: str = Form(""),
+    postal_code: str = Form(""),
+    city: str = Form(""),
+    country: str = Form(""),
+    phone: str = Form(""),
+    hours: str = Form(""),
+    url: str = Form(""),
+    is_active: int = Form(1),
+    lat: str = Form(""),
+    lng: str = Form(""),
+):
+    fields: dict = {
+        "name": name or None, "description": description or None,
+        "address": address or None, "postal_code": postal_code or None,
+        "city": city or None, "country": country or None,
+        "phone": phone or None, "hours": hours or None,
+        "url": url or None, "is_active": is_active,
+    }
+    try:
+        if lat:
+            fields["lat"] = float(lat)
+        if lng:
+            fields["lng"] = float(lng)
+        if lat or lng:
+            fields["geocode_source"] = "manual"
+    except ValueError:
+        pass
+    update_manual_place(place_id, fields, _DB)
+    return RedirectResponse("/places", status_code=303)
+
+
+@router.post("/places/manual/{place_id}/delete")
+async def manual_place_delete(place_id: int):
+    delete_manual_place(place_id, _DB)
+    return RedirectResponse("/places", status_code=303)
+
+
+@router.post("/places/manual/{place_id}/geocode", response_class=HTMLResponse)
+async def manual_place_geocode(place_id: int):
+    from app.worker.geocoder import geocode_place as _geocode
+    from fastapi.responses import Response
+    place = get_manual_place(place_id, _DB)
+    if not place:
+        return HTMLResponse('<span class="geo-error">Ort nicht gefunden</span>')
+    result = _geocode(place)
+    if result:
+        update_place_coords(place_id, result["lat"], result["lng"],
+                            state=result.get("state"), db_path=_DB)
+        r = Response(status_code=204)
+        r.headers["HX-Refresh"] = "true"
+        return r
+    return HTMLResponse('<span class="geo-error">Kein Ergebnis von Nominatim</span>')
 
 
 @router.get("/places", response_class=HTMLResponse)

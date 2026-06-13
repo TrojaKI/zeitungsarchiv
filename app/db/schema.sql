@@ -116,7 +116,9 @@ CREATE TABLE IF NOT EXISTS places (
     is_active   INTEGER NOT NULL DEFAULT 1,  -- 1 = still exists, 0 = closed/gone
     state       TEXT,                        -- federal state (e.g. "Wien", from Nominatim address.state)
     name_key    TEXT NOT NULL,  -- LOWER(TRIM(name)) for deduplication
-    city_key    TEXT NOT NULL   -- LOWER(TRIM(COALESCE(city,''))) for deduplication
+    city_key    TEXT NOT NULL,  -- LOWER(TRIM(COALESCE(city,''))) for deduplication
+    source      TEXT NOT NULL DEFAULT 'article',  -- 'article' | 'manual'
+    description TEXT            -- canonical description/notes (used by manual entries)
 );
 
 -- Unique constraint: one canonical row per (name, city) combination
@@ -135,10 +137,12 @@ CREATE TABLE IF NOT EXISTS place_articles (
 CREATE INDEX IF NOT EXISTS place_articles_article ON place_articles (article_id);
 CREATE INDEX IF NOT EXISTS place_articles_place   ON place_articles (place_id);
 
--- Auto-delete orphaned places when the last article reference is removed
+-- Auto-delete orphaned article-sourced places when the last article reference is removed.
+-- Manual places (source='manual') are never auto-deleted.
 CREATE TRIGGER IF NOT EXISTS place_articles_cleanup
 AFTER DELETE ON place_articles
 BEGIN
     DELETE FROM places WHERE id = OLD.place_id
+      AND source = 'article'
       AND NOT EXISTS (SELECT 1 FROM place_articles WHERE place_id = OLD.place_id);
 END;

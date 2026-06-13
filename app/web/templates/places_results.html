@@ -38,9 +38,15 @@
             {{ '✓ aktiv' if p.is_active else '✕ geschlossen' }}
           </button>
         </form>
+        {% if p.source == 'manual' %}
+        <form hx-post="/places/manual/{{ p.id }}/geocode" hx-swap="none" style="display:inline">
+          <button type="submit" class="merge-toggle" title="Koordinaten via Nominatim abrufen">&#x1F4CD; geocodieren</button>
+        </form>
+        {% else %}
         <button class="merge-toggle" type="button"
                 onclick="toggleMerge(this, {{ p.id }})"
                 title="Zusammenführen">⤵ zusammenführen</button>
+        {% endif %}
         <div id="merge-form-{{ p.id }}" class="merge-form" style="display:none">
           <form hx-post="/places/canonical/{{ p.id }}/merge" hx-target="#places-results"
                 hx-select="#places-results" hx-swap="outerHTML">
@@ -67,11 +73,23 @@
            target="_blank" rel="noopener" class="ext-link">{{ p.url }}</a>
       {% else %}–{% endif %}</td>
       <td>
-        {% for art in p.articles %}
-          <a href="/articles/{{ art.id }}">{{ art.headline or art.id }}</a>{% if not loop.last %}, {% endif %}
+        {% if p.source == 'manual' %}
+          <span style="font-size:.75rem;background:#dbeafe;color:#1d4ed8;padding:.1rem .5rem;border-radius:4px">manuell</span>
+          <br>
+          <form hx-post="/places/manual/{{ p.id }}/delete"
+                hx-confirm="Eintrag wirklich löschen?"
+                hx-target="body"
+                hx-push-url="/places"
+                style="display:inline">
+            <button type="submit" class="merge-toggle" style="color:#dc2626">✕ löschen</button>
+          </form>
         {% else %}
-          –
-        {% endfor %}
+          {% for art in p.articles %}
+            <a href="/articles/{{ art.id }}">{{ art.headline or art.id }}</a>{% if not loop.last %}, {% endif %}
+          {% else %}
+            –
+          {% endfor %}
+        {% endif %}
       </td>
     </tr>
     {% endfor %}

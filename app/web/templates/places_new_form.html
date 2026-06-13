@@ -1,0 +1,52 @@
+<form hx-post="/places/create"
+      hx-target="body"
+      hx-push-url="/places"
+      style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:1rem;margin-bottom:1rem">
+  <h4 style="margin:0 0 .75rem">Ort manuell hinzufügen</h4>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .75rem">
+    <div>
+      <label style="font-size:.85rem;color:#6b7280">Name *</label>
+      <input type="text" name="name" required style="width:100%">
+    </div>
+    <div>
+      <label style="font-size:.85rem;color:#6b7280">Stadt</label>
+      <input type="text" name="city" style="width:100%">
+    </div>
+    <div style="grid-column:1/-1">
+      <label style="font-size:.85rem;color:#6b7280">Beschreibung / Notizen</label>
+      <textarea name="description" rows="3" style="width:100%;box-sizing:border-box"></textarea>
+    </div>
+    <div>
+      <label style="font-size:.85rem;color:#6b7280">Adresse</label>
+      <input type="text" name="address" style="width:100%">
+    </div>
+    <div>
+      <label style="font-size:.85rem;color:#6b7280">PLZ</label>
+      <input type="text" name="postal_code" style="width:100%">
+    </div>
+    <div>
+      <label style="font-size:.85rem;color:#6b7280">Land</label>
+      <input type="text" name="country" value="Österreich" style="width:100%">
+    </div>
+    <div>
+      <label style="font-size:.85rem;color:#6b7280">Telefon</label>
+      <input type="text" name="phone" style="width:100%">
+    </div>
+    <div>
+      <label style="font-size:.85rem;color:#6b7280">Öffnungszeiten</label>
+      <input type="text" name="hours" style="width:100%">
+    </div>
+    <div>
+      <label style="font-size:.85rem;color:#6b7280">Website</label>
+      <input type="text" name="url" style="width:100%">
+    </div>
+  </div>
+  <div style="margin-top:.75rem;display:flex;gap:.5rem">
+    <button type="button"
+            onclick="document.getElementById('manual-place-form').innerHTML=''"
+            style="background:#e5e7eb;border:none;padding:.4rem .9rem;border-radius:4px;cursor:pointer">
+      Abbrechen
+    </button>
+    <button type="submit" class="btn">Speichern</button>
+  </div>
+</form>
