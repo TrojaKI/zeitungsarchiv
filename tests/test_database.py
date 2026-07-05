@@ -148,6 +148,26 @@ class TestGetAdjacentArticles:
         assert db.get_adjacent_articles(999, db_path) == {"prev": None, "next": None}
 
 
+class TestGetStatsByYear:
+    """The stats dashboard groups articles by publication year."""
+
+    def test_groups_and_orders_by_year(self, db_path: Path):
+        for date in ("2024-05-01", "2024-11-02", "2026-01-03", "2025-06-04"):
+            db.insert_article(_article(filename=f"{date}.tif", article_date=date), db_path)
+        by_year = db.get_stats(db_path)["by_year"]
+        assert by_year == [
+            {"year": "2024", "cnt": 2},
+            {"year": "2025", "cnt": 1},
+            {"year": "2026", "cnt": 1},
+        ]
+
+    def test_ignores_missing_dates(self, db_path: Path):
+        db.insert_article(_article(filename="a.tif", article_date="2026-01-01"), db_path)
+        db.insert_article(_article(filename="b.tif", article_date=None), db_path)
+        by_year = db.get_stats(db_path)["by_year"]
+        assert by_year == [{"year": "2026", "cnt": 1}]
+
+
 class TestGetNextReviewArticle:
     """The save-and-next flow needs the next flagged article, skipping the current."""
 

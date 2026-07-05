@@ -14,15 +14,38 @@
   </div>
 </div>
 
+{% if by_year %}
+{% set year_max = by_year | map(attribute='cnt') | max %}
+<section class="year-section">
+  <h2>Artikel pro Jahr</h2>
+  <div class="year-chart">
+    {% for row in by_year %}
+    <div class="year-col" title="{{ row.year }}: {{ row.cnt }} Artikel">
+      <div class="year-bar" style="height: {{ (row.cnt / year_max * 100) | round(1) }}%"></div>
+      <div class="year-count">{{ row.cnt }}</div>
+      <div class="year-label">{{ row.year }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <div class="stats-columns">
   <section>
     <h2>Nach Zeitung</h2>
     {% if by_newspaper %}
-      <table>
+      {% set np_max = by_newspaper | map(attribute='cnt') | max %}
+      <table class="bar-table">
         <thead><tr><th>Zeitung</th><th>Artikel</th></tr></thead>
         <tbody>
           {% for row in by_newspaper %}
-          <tr><td>{{ row.newspaper }}</td><td>{{ row.cnt }}</td></tr>
+          <tr>
+            <td>{{ row.newspaper }}</td>
+            <td class="bar-cell">
+              <span class="bar" style="width: {{ (row.cnt / np_max * 100) | round(1) }}%"></span>
+              <span class="bar-value">{{ row.cnt }}</span>
+            </td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
@@ -34,11 +57,18 @@
   <section>
     <h2>Nach Kategorie</h2>
     {% if by_category %}
-      <table>
+      {% set cat_max = by_category | map(attribute='cnt') | max %}
+      <table class="bar-table">
         <thead><tr><th>Kategorie</th><th>Artikel</th></tr></thead>
         <tbody>
           {% for row in by_category %}
-          <tr><td>{{ row.category }}</td><td>{{ row.cnt }}</td></tr>
+          <tr>
+            <td>{{ row.category }}</td>
+            <td class="bar-cell">
+              <span class="bar" style="width: {{ (row.cnt / cat_max * 100) | round(1) }}%"></span>
+              <span class="bar-value">{{ row.cnt }}</span>
+            </td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>

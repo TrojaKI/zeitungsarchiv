@@ -918,6 +918,60 @@ details summary:hover { color: var(--accent); }
 }
 .stats-columns section { flex: 1; }
 
+/* ── Year timeline ── */
+.year-section { margin-bottom: 1.75rem; }
+.year-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: .5rem;
+  height: 180px;
+  padding: .5rem .25rem 0;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+}
+.year-col {
+  flex: 1 0 34px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+  gap: .2rem;
+}
+.year-bar {
+  width: 60%;
+  min-height: 2px;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-hover) 100%);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: opacity .13s;
+}
+.year-col:hover .year-bar { opacity: .8; }
+.year-count { font-size: .68rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.year-label { font-size: .68rem; color: var(--ink-body); }
+
+/* ── Count bars in stats tables ── */
+.bar-table td.bar-cell {
+  position: relative;
+  min-width: 120px;
+}
+.bar-table .bar {
+  display: inline-block;
+  height: .7rem;
+  background: var(--blue-mid);
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: .5rem;
+  min-width: 2px;
+}
+.bar-table .bar-value {
+  font-size: .8rem;
+  color: var(--ink-body);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Tables ── */
 table, .ungeo-table {
   width: 100%;

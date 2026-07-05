@@ -997,11 +997,18 @@ def get_stats(db_path: Path = _DEFAULT_DB_PATH) -> dict:
             "SELECT category, COUNT(*) AS cnt FROM articles "
             "WHERE category IS NOT NULL GROUP BY category ORDER BY cnt DESC"
         ).fetchall()
+        # Publication year timeline (first 4 chars of the ISO article_date)
+        by_year = conn.execute(
+            "SELECT substr(article_date, 1, 4) AS year, COUNT(*) AS cnt FROM articles "
+            "WHERE article_date IS NOT NULL AND article_date != '' "
+            "GROUP BY year ORDER BY year"
+        ).fetchall()
     return {
         "total": total,
         "needs_review": review,
         "by_newspaper": [dict(r) for r in by_newspaper],
         "by_category": [dict(r) for r in by_category],
+        "by_year": [dict(r) for r in by_year],
     }
 
 
