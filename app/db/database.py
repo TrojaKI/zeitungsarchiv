@@ -323,6 +323,74 @@ def delete_article(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
         conn.execute("DELETE FROM articles WHERE id = ?", (article_id,))
 
 
+def get_related_articles(
+    article_id: int, limit: int = 5, db_path: Path = _DEFAULT_DB_PATH
+) -> list[dict]:
+    """Return articles sharing tags or locations with the given article.
+
+    Score = number of shared tags + number of shared location entries, compared
+    via json_each over the JSON-array columns. Articles from the same multi-page
+    group are excluded (they are already linked via the page navigation).
+    """
+    sql = """
+        SELECT id, headline, thumb_path, article_date, newspaper, score FROM (
+            SELECT a.id, a.headline, a.thumb_path, a.article_date, a.newspaper,
+                   (SELECT COUNT(*) FROM json_each(COALESCE(a.tags, '[]')) je
+                    WHERE je.value IN (
+                        SELECT value FROM json_each(
+                            COALESCE((SELECT tags FROM articles WHERE id = :id), '[]'))))
+                 + (SELECT COUNT(*) FROM json_each(COALESCE(a.locations, '[]')) je
+                    WHERE je.value IN (
+                        SELECT value FROM json_each(
+                            COALESCE((SELECT locations FROM articles WHERE id = :id), '[]'))))
+                   AS score
+            FROM articles a
+            WHERE a.id != :id
+              AND (a.article_group IS NULL
+                   OR a.article_group != COALESCE(
+                       (SELECT article_group FROM articles WHERE id = :id), ''))
+        )
+        WHERE score > 0
+        ORDER BY score DESC, article_date DESC
+        LIMIT :limit
+    """
+    with get_connection(db_path) as conn:
+        rows = conn.execute(sql, {"id": article_id, "limit": limit}).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_adjacent_articles(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> dict:
+    """Return the chronologically previous/next article as {'prev': …, 'next': …}.
+
+    Ordering is by (article_date, id); each value is {'id', 'headline'} or None.
+    'prev' is the older neighbour, 'next' the newer one.
+    """
+    with get_connection(db_path) as conn:
+        current = conn.execute(
+            "SELECT article_date, id FROM articles WHERE id = ?", (article_id,)
+        ).fetchone()
+        if current is None:
+            return {"prev": None, "next": None}
+        # COALESCE keeps NULL article_date articles sortable (treated as empty string)
+        key = (current["article_date"] or "", current["id"])
+        prev = conn.execute(
+            """SELECT id, headline FROM articles
+               WHERE (COALESCE(article_date, ''), id) < (?, ?)
+               ORDER BY COALESCE(article_date, '') DESC, id DESC LIMIT 1""",
+            key,
+        ).fetchone()
+        nxt = conn.execute(
+            """SELECT id, headline FROM articles
+               WHERE (COALESCE(article_date, ''), id) > (?, ?)
+               ORDER BY COALESCE(article_date, '') ASC, id ASC LIMIT 1""",
+            key,
+        ).fetchone()
+    return {
+        "prev": dict(prev) if prev else None,
+        "next": dict(nxt) if nxt else None,
+    }
+
+
 def _fts_sanitize(query: str) -> str:
     """Quote each token so FTS5 operators in user input cannot raise syntax errors.
 

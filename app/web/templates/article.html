@@ -11,14 +11,14 @@
     {{ article.headline }} – Zeitungsarchiv
   {% endif %}
 {% endblock %}
+{% block head %}<script src="/static/lightbox.js" defer></script>{% endblock %}
 {% block content %}
 <div class="article-layout">
   <aside class="article-image">
     {% if article.image_path %}
-      <a href="/archive/{{ article.image_path }}" target="_blank" title="Vollbild öffnen">
-        <img src="/archive/{{ article.image_path }}"
-             alt="Scan {{ article.headline }}">
-      </a>
+      <img src="/archive/{{ article.image_path }}"
+           alt="Scan {{ article.headline }}"
+           class="zoomable" title="Zum Zoomen klicken">
       <form method="post" action="/articles/{{ article.id }}/reprocess-image"
             style="margin-top: 0.5rem;"
             onsubmit="return confirm('Bild neu verarbeiten? Das Archivbild und Thumbnail werden überschrieben.')">
@@ -30,6 +30,19 @@
   </aside>
 
   <div class="article-body">
+    {% if adjacent and (adjacent.prev or adjacent.next) %}
+    <nav class="adjacent-nav" aria-label="Chronologische Navigation">
+      {% if adjacent.prev %}
+        <a href="/articles/{{ adjacent.prev.id }}" class="adjacent-link" rel="prev"
+           title="{{ adjacent.prev.headline or '' }}">&lsaquo; Älterer Artikel</a>
+      {% else %}<span></span>{% endif %}
+      {% if adjacent.next %}
+        <a href="/articles/{{ adjacent.next.id }}" class="adjacent-link" rel="next"
+           title="{{ adjacent.next.headline or '' }}">Neuerer Artikel &rsaquo;</a>
+      {% endif %}
+    </nav>
+    {% endif %}
+
     {% if group_pages %}
     <nav class="page-nav" aria-label="Seitennavigation">
       {% for p in group_pages %}
@@ -177,6 +190,26 @@
       <summary>OCR-Volltext</summary>
       <pre class="ocr-text">{{ article.full_text }}</pre>
     </details>
+
+    {% if related %}
+    <section class="related">
+      <h2>Ähnliche Artikel</h2>
+      <div class="related-grid">
+        {% for r in related %}
+        <a href="/articles/{{ r.id }}" class="related-card">
+          {% if r.thumb_path %}
+            <img src="/archive/{{ r.thumb_path }}" alt="" class="related-thumb">
+          {% endif %}
+          <span class="related-headline">{{ r.headline or '(keine Schlagzeile)' }}</span>
+          <span class="related-meta">
+            {% if r.newspaper %}{{ r.newspaper }}{% endif %}
+            {% if r.article_date %} · {{ r.article_date }}{% endif %}
+          </span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
 
     <div class="actions">
       <a href="/articles/{{ article.id }}/edit" class="btn">Metadaten bearbeiten</a>

@@ -84,3 +84,21 @@ def test_blank_full_text_does_not_wipe_existing(ctx):
                 follow_redirects=False)
 
     assert get_article(a1, db)["full_text"] == "alter text"
+
+
+def test_detail_page_renders_lightbox_related_and_adjacent(ctx):
+    client, db = ctx
+    older = {**_flagged("a.tif", "Weinlese"), "needs_review": 0,
+             "tags": ["wein"], "article_date": "2026-01-01", "image_path": "a/i.webp"}
+    newer = {**_flagged("b.tif", "Heuriger"), "needs_review": 0,
+             "tags": ["wein"], "article_date": "2026-02-01", "image_path": "b/i.webp"}
+    a1 = insert_article(older, db)
+    insert_article(newer, db)
+
+    html = client.get(f"/articles/{a1}").text
+
+    assert 'class="zoomable"' in html          # lightbox target
+    assert "lightbox.js" in html               # lightbox script
+    assert "Ähnliche Artikel" in html          # related section (shared tag)
+    assert "Heuriger" in html                  # the related article
+    assert "Neuerer Artikel" in html           # adjacent next link

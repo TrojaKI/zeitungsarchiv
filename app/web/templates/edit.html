@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Bearbeiten – {{ article.headline }}{% endblock %}
+{% block head %}<script src="/static/lightbox.js" defer></script>{% endblock %}
 {% block content %}
 <div class="edit-layout">
   <aside class="article-image">
     {% if article.image_path %}
       <img src="/archive/{{ article.image_path }}"
-           alt="Scan">
+           alt="Scan" class="zoomable" title="Zum Zoomen klicken">
       <form method="post" action="/articles/{{ article.id }}/reprocess-image"
             style="margin-top: 0.5rem;"
             onsubmit="return confirm('Bild neu verarbeiten? Das Archivbild und Thumbnail werden überschrieben.')">

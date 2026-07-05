@@ -8,9 +8,10 @@ from pathlib import Path
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from app.db.database import (add_place_to_article, delete_article, get_article, get_books,
-                              get_group_articles, get_next_review_article, get_places,
-                              get_recipes, get_review_count, update_article)
+from app.db.database import (add_place_to_article, delete_article, get_adjacent_articles,
+                              get_article, get_books, get_group_articles,
+                              get_next_review_article, get_places, get_recipes,
+                              get_related_articles, get_review_count, update_article)
 from app.web.templating import templates as _templates
 from app.worker.preprocess import preprocess
 
@@ -51,11 +52,14 @@ async def article_detail(request: Request, article_id: int):
         if article.get("article_group")
         else []
     )
+    related = get_related_articles(article_id, db_path=_DB)
+    adjacent = get_adjacent_articles(article_id, _DB)
     return _templates.TemplateResponse(
         request,
         "article.html",
         _ctx(request, article=article, places=places, books=books,
-             recipes=recipes, group_pages=group_pages),
+             recipes=recipes, group_pages=group_pages,
+             related=related, adjacent=adjacent),
     )
 
 

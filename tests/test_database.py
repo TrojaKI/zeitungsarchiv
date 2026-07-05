@@ -96,6 +96,58 @@ class TestUpdateArticleFtsSync:
         assert db.count_search_results(query="kennwort", db_path=db_path) == 1
 
 
+class TestGetRelatedArticles:
+    """Related = shared tags/locations, excluding the same multi-page group."""
+
+    def test_shared_tag_is_related(self, db_path: Path):
+        a1 = db.insert_article(_article(filename="a.tif", tags=["wein"], locations=[]), db_path)
+        a2 = db.insert_article(_article(filename="b.tif", tags=["wein"], locations=[]), db_path)
+        related_ids = [r["id"] for r in db.get_related_articles(a1, db_path=db_path)]
+        assert a2 in related_ids
+
+    def test_no_overlap_is_not_related(self, db_path: Path):
+        a1 = db.insert_article(_article(filename="a.tif", tags=["wein"], locations=["Wien"]), db_path)
+        db.insert_article(_article(filename="b.tif", tags=["sport"], locations=["Linz"]), db_path)
+        assert db.get_related_articles(a1, db_path=db_path) == []
+
+    def test_same_group_excluded(self, db_path: Path):
+        a1 = db.insert_article(_article(
+            filename="a.tif", tags=["wein"], locations=[],
+            article_group="grp", page_number=1), db_path)
+        db.insert_article(_article(
+            filename="b.tif", tags=["wein"], locations=[],
+            article_group="grp", page_number=2), db_path)
+        assert db.get_related_articles(a1, db_path=db_path) == []
+
+    def test_ordered_by_score(self, db_path: Path):
+        a1 = db.insert_article(_article(filename="a.tif", tags=["wein"], locations=["Wien"]), db_path)
+        weak = db.insert_article(_article(filename="w.tif", tags=["wein"], locations=[]), db_path)
+        strong = db.insert_article(_article(filename="s.tif", tags=["wein"], locations=["Wien"]), db_path)
+        ordered = [r["id"] for r in db.get_related_articles(a1, db_path=db_path)]
+        assert ordered.index(strong) < ordered.index(weak)
+
+
+class TestGetAdjacentArticles:
+    """Chronological neighbours by (article_date, id)."""
+
+    def test_prev_and_next(self, db_path: Path):
+        a1 = db.insert_article(_article(filename="a.tif", article_date="2026-01-01"), db_path)
+        a2 = db.insert_article(_article(filename="b.tif", article_date="2026-02-01"), db_path)
+        a3 = db.insert_article(_article(filename="c.tif", article_date="2026-03-01"), db_path)
+        adj = db.get_adjacent_articles(a2, db_path)
+        assert adj["prev"]["id"] == a1
+        assert adj["next"]["id"] == a3
+
+    def test_edges_have_none(self, db_path: Path):
+        a1 = db.insert_article(_article(filename="a.tif", article_date="2026-01-01"), db_path)
+        a2 = db.insert_article(_article(filename="b.tif", article_date="2026-02-01"), db_path)
+        assert db.get_adjacent_articles(a1, db_path)["prev"] is None
+        assert db.get_adjacent_articles(a2, db_path)["next"] is None
+
+    def test_missing_article_returns_empty(self, db_path: Path):
+        assert db.get_adjacent_articles(999, db_path) == {"prev": None, "next": None}
+
+
 class TestGetNextReviewArticle:
     """The save-and-next flow needs the next flagged article, skipping the current."""
 
