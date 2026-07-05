@@ -1,6 +1,11 @@
 """Stub out heavy native dependencies so unit tests can import app modules
-without requiring OpenCV, Tesseract, Ollama, or Pillow to be installed."""
+without requiring OpenCV, Tesseract, Ollama, or Pillow to be installed.
 
+Stubs are only installed for modules that are actually missing — when the
+real package is available (full venv), it is used so integration tests run
+against the real implementation."""
+
+import importlib.util
 import sys
 import types
 
@@ -20,11 +25,17 @@ def _make_stub(name: str) -> types.ModuleType:
 
 
 for _name in ("cv2", "numpy", "pytesseract", "PIL", "PIL.Image", "ollama"):
-    if _name not in sys.modules:
-        sys.modules[_name] = _make_stub(_name)
+    if _name in sys.modules:
+        continue
+    if importlib.util.find_spec(_name.split(".")[0]) is not None:
+        continue  # real package installed — do not stub
+    sys.modules[_name] = _make_stub(_name)
 
 # numpy is used via 'import numpy as np' and np.array / np.uint8 etc.
 # Provide a minimal stub so attribute lookups don't crash on import.
-_np = sys.modules["numpy"]
-for _attr in ("uint8", "float32", "ndarray", "array", "zeros"):
-    setattr(_np, _attr, None)
+if isinstance(sys.modules.get("numpy"), types.ModuleType) and not hasattr(
+    sys.modules.get("numpy"), "__version__"
+):
+    _np = sys.modules["numpy"]
+    for _attr in ("uint8", "float32", "ndarray", "array", "zeros"):
+        setattr(_np, _attr, None)

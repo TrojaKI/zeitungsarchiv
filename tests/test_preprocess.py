@@ -56,7 +56,9 @@ class TestDetectOrientation:
 class TestOrientationCorrectionApplied:
     """preprocess() must call np.rot90 with the correct k when OSD returns non-zero."""
 
-    @pytest.mark.parametrize("rotate,expected_k", [(90, 1), (180, 2), (270, 3)])
+    # Tesseract's rotate value is clockwise; np.rot90 rotates counter-clockwise,
+    # so preprocess() must invert: k = (4 - rotate/90) % 4 (see commit c0da5dc)
+    @pytest.mark.parametrize("rotate,expected_k", [(90, 3), (180, 2), (270, 1)])
     def test_rot90_called_with_correct_k(self, tmp_path, rotate, expected_k):
         tiff = tmp_path / "scan.tif"
         tiff.touch()

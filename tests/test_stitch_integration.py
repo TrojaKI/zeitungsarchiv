@@ -1,13 +1,10 @@
-"""Integration test for stitch_multipart using real Hugin tools.
+"""Integration test for stitch_multipart using the OpenCV pipeline.
 
-Requires:  hugin-tools installed (pto_gen, cpfind, cpclean,
-           autooptimiser, pano_modify, hugin_executor)
 Test data: examples/at_kurier_ooe_01.tif  +  examples/at_kurier_ooe_02.tif
 
-The test is automatically skipped when any Hugin binary is missing or
-when the example source files are not present.
+The test is automatically skipped when the example source files are not present.
 
-Note: stitching real 50 MB TIFFs takes ~30–90 seconds.
+Note: stitching real 50 MB TIFFs takes several seconds.
 """
 
 import shutil
@@ -16,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from app.worker.stitch import _REQUIRED_TOOLS, stitch_multipart
+from app.worker.stitch import stitch_multipart
 
 # ---------------------------------------------------------------------------
 # skip markers
@@ -26,13 +23,8 @@ _EXAMPLES = Path(__file__).parent.parent / "examples"
 _PART1 = _EXAMPLES / "at_kurier_ooe_01.tif"
 _PART2 = _EXAMPLES / "at_kurier_ooe_02.tif"
 
-_hugin_missing = [t for t in _REQUIRED_TOOLS if shutil.which(t) is None]
 _sources_missing = not (_PART1.exists() and _PART2.exists())
 
-requires_hugin = pytest.mark.skipif(
-    bool(_hugin_missing),
-    reason=f"Hugin tools not installed: {', '.join(_hugin_missing)}",
-)
 requires_sources = pytest.mark.skipif(
     _sources_missing,
     reason=f"Example source TIFFs not found in {_EXAMPLES}",
@@ -85,10 +77,9 @@ def _read_tiff_dimensions(path: Path) -> tuple[int, int]:
 # integration tests
 # ---------------------------------------------------------------------------
 
-@requires_hugin
 @requires_sources
 class TestStitchIntegration:
-    """Full Hugin pipeline against the real example scans."""
+    """Full OpenCV stitching pipeline against the real example scans."""
 
     def test_output_file_created(self, tmp_path):
         """stitch_multipart must create the output TIFF."""
