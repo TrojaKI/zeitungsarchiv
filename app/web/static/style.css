@@ -310,11 +310,40 @@ button:disabled, .btn:disabled, .btn-primary:disabled { opacity: .55; cursor: no
 /* ═══════════════════════════════════════════════════════════════════
    RESULT CARDS
    ═══════════════════════════════════════════════════════════════════ */
+.result-count {
+  font-size: .82rem;
+  color: var(--muted);
+  margin: 0 0 .6rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .results {
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: .6rem;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: .4rem 0;
+}
+.load-more button {
+  background: var(--card);
+  color: var(--ink-body);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: .55rem 1.6rem;
+  font-family: var(--font-ui);
+  font-size: .88rem;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.load-more button:hover {
+  background: var(--accent-pale);
+  border-color: var(--accent-mid);
+  color: var(--accent);
 }
 
 .result-card {

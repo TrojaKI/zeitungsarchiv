@@ -337,6 +337,66 @@ def _fts_sanitize(query: str) -> str:
     return " ".join(quoted)
 
 
+def _build_search_from_where(
+    query: str, newspaper: str, category: str, section: str,
+    date_from: str, date_to: str, location: str, country: str,
+    needs_review: Optional[bool],
+) -> tuple[str, list, bool]:
+    """Build the shared 'FROM … WHERE …' clause + params for search and count.
+
+    Both articles (non-FTS) and articles_fts join use the alias `a`, so filter
+    columns are always prefixed 'a.'. Returns (clause, params, has_fts).
+    """
+    params: list = []
+    q = _fts_sanitize(query)
+
+    if q:
+        from_where = (
+            "FROM articles_fts "
+            "JOIN articles a ON articles_fts.rowid = a.id "
+            "WHERE articles_fts MATCH ?"
+        )
+        params.append(q)
+    else:
+        from_where = "FROM articles a WHERE 1=1"
+
+    if newspaper:
+        from_where += " AND a.newspaper = ?"
+        params.append(newspaper)
+    if category:
+        from_where += " AND a.category = ?"
+        params.append(category)
+    if section:
+        from_where += " AND a.section = ?"
+        params.append(section)
+    if date_from:
+        from_where += " AND a.article_date >= ?"
+        params.append(date_from)
+    if date_to:
+        from_where += " AND a.article_date <= ?"
+        params.append(date_to)
+    if needs_review is not None:
+        from_where += " AND a.needs_review = ?"
+        params.append(1 if needs_review else 0)
+    if location:
+        # Locations stored as JSON array — match exact entry via JSON quoting
+        from_where += " AND a.locations LIKE ?"
+        params.append(f'%"{location}"%')
+    if country:
+        from_where += " AND a.locations LIKE ?"
+        params.append(f'%"{country}"%')
+
+    return from_where, params, bool(q)
+
+
+_SEARCH_SORT_MAP = {
+    "date_desc":    ("a.article_date", "DESC"),
+    "date_asc":     ("a.article_date", "ASC"),
+    "headline_asc": ("a.headline",     "ASC"),
+    "id_desc":      ("a.id",           "DESC"),
+}
+
+
 def search_full(
     query: str = "",
     newspaper: str = "",
@@ -357,65 +417,42 @@ def search_full(
 
     Uses FTS5 snippet() for search terms; falls back to plain SELECT otherwise.
     """
-    params: list = []
-    q = _fts_sanitize(query)
-
-    if q:
-        sql = """
-            SELECT a.*,
-                   snippet(articles_fts, 2, '<mark>', '</mark>', '…', 20) AS snippet
-            FROM articles_fts
-            JOIN articles a ON articles_fts.rowid = a.id
-            WHERE articles_fts MATCH ?
-        """
-        params.append(q)
-        prefix = "AND a."
-    else:
-        sql = "SELECT *, '' AS snippet FROM articles WHERE 1=1"
-        prefix = "AND "
-
-    if newspaper:
-        sql += f" {prefix}newspaper = ?"
-        params.append(newspaper)
-    if category:
-        sql += f" {prefix}category = ?"
-        params.append(category)
-    if section:
-        sql += f" {prefix}section = ?"
-        params.append(section)
-    if date_from:
-        sql += f" {prefix}article_date >= ?"
-        params.append(date_from)
-    if date_to:
-        sql += f" {prefix}article_date <= ?"
-        params.append(date_to)
-    if needs_review is not None:
-        sql += f" {prefix}needs_review = ?"
-        params.append(1 if needs_review else 0)
-    if location:
-        # Locations stored as JSON array — match exact entry via JSON quoting
-        loc_col = "a.locations" if q else "locations"
-        sql += f' AND {loc_col} LIKE ?'
-        params.append(f'%"{location}"%')
-    if country:
-        loc_col = "a.locations" if q else "locations"
-        sql += f' AND {loc_col} LIKE ?'
-        params.append(f'%"{country}"%')
-
-    _sort_map = {
-        "date_desc":    ("a.article_date", "article_date", "DESC"),
-        "date_asc":     ("a.article_date", "article_date", "ASC"),
-        "headline_asc": ("a.headline",     "headline",     "ASC"),
-        "id_desc":      ("a.id",           "id",           "DESC"),
-    }
-    fts_col, plain_col, direction = _sort_map.get(sort, _sort_map["date_desc"])
-    order_col = fts_col if q else plain_col
-    sql += f" ORDER BY {order_col} {direction} LIMIT ? OFFSET ?"
-    params.extend([limit, offset])
-
+    from_where, params, has_fts = _build_search_from_where(
+        query, newspaper, category, section, date_from, date_to,
+        location, country, needs_review,
+    )
+    snippet = (
+        "snippet(articles_fts, 2, '<mark>', '</mark>', '…', 20)" if has_fts else "''"
+    )
+    order_col, direction = _SEARCH_SORT_MAP.get(sort, _SEARCH_SORT_MAP["date_desc"])
+    sql = (
+        f"SELECT a.*, {snippet} AS snippet {from_where} "
+        f"ORDER BY {order_col} {direction} LIMIT ? OFFSET ?"
+    )
     with get_connection(db_path) as conn:
-        rows = conn.execute(sql, params).fetchall()
+        rows = conn.execute(sql, params + [limit, offset]).fetchall()
     return [dict(r) for r in rows]
+
+
+def count_search_results(
+    query: str = "",
+    newspaper: str = "",
+    category: str = "",
+    section: str = "",
+    date_from: str = "",
+    date_to: str = "",
+    location: str = "",
+    country: str = "",
+    needs_review: Optional[bool] = None,
+    db_path: Path = _DEFAULT_DB_PATH,
+) -> int:
+    """Total number of articles matching the same filters as search_full()."""
+    from_where, params, _ = _build_search_from_where(
+        query, newspaper, category, section, date_from, date_to,
+        location, country, needs_review,
+    )
+    with get_connection(db_path) as conn:
+        return conn.execute(f"SELECT COUNT(*) {from_where}", params).fetchone()[0]
 
 
 _PLACE_FIELDS = frozenset({

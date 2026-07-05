@@ -36,6 +36,41 @@ def _article(**overrides) -> dict:
     return article
 
 
+class TestCountSearchResults:
+    """count_search_results must match search_full's filtering exactly."""
+
+    def _seed(self, db_path: Path, n: int = 25) -> None:
+        for i in range(n):
+            db.insert_article(_article(
+                filename=f"s{i}.tif", headline=f"Artikel {i}",
+                newspaper="Kurier" if i % 2 == 0 else "Presse",
+                full_text=f"Meldung nummer {i} aus Wien",
+                image_path=f"s{i}/i.webp", thumb_path=f"s{i}/t.jpg",
+            ), db_path)
+
+    def test_count_matches_unlimited_search(self, db_path: Path):
+        self._seed(db_path, 25)
+        # search_full is capped at 20 by default; count must see all 25
+        assert db.count_search_results(db_path=db_path) == 25
+        assert len(db.search_full(limit=1000, db_path=db_path)) == 25
+
+    def test_count_respects_fts_query(self, db_path: Path):
+        self._seed(db_path, 25)
+        assert db.count_search_results(query="Wien", db_path=db_path) == 25
+        assert db.count_search_results(query="nummer 7", db_path=db_path) == 1
+
+    def test_count_respects_filters(self, db_path: Path):
+        self._seed(db_path, 10)
+        assert db.count_search_results(newspaper="Kurier", db_path=db_path) == 5
+        assert db.count_search_results(newspaper="Nixzeitung", db_path=db_path) == 0
+
+    def test_count_survives_fts_special_chars(self, db_path: Path):
+        self._seed(db_path, 3)
+        # must not raise, and must agree with the unlimited search result count
+        count = db.count_search_results(query="(wien", db_path=db_path)
+        assert count == len(db.search_full(query="(wien", limit=1000, db_path=db_path))
+
+
 class TestFtsSanitize:
     """User input with FTS5 operators must never raise OperationalError."""
 

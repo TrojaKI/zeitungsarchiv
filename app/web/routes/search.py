@@ -6,11 +6,13 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from app.db.database import get_filter_options, get_group_articles, get_review_count, search_full
+from app.db.database import (count_search_results, get_filter_options, get_group_articles,
+                             get_review_count, search_full)
 from app.web.templating import templates as _templates
 
 router = APIRouter()
 _DB = Path(os.getenv("DB_PATH", "/app/db/archive.db"))
+_PAGE_SIZE = 20
 
 
 def _add_display_headlines(results: list[dict], db_path: Path) -> list[dict]:
@@ -40,13 +42,15 @@ def _ctx(request: Request, **kwargs) -> dict:
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     opts = get_filter_options(_DB)
-    results = _add_display_headlines(search_full(limit=20, db_path=_DB), _DB)
+    results = _add_display_headlines(search_full(limit=_PAGE_SIZE, db_path=_DB), _DB)
+    total = count_search_results(db_path=_DB)
     return _templates.TemplateResponse(
         request,
         "index.html",
         _ctx(request, results=results, q="", newspaper="", category="",
              section="", date_from="", date_to="", location="", country="",
-             sort="date_desc", **opts),
+             sort="date_desc", offset=0, total=total,
+             has_more=_PAGE_SIZE < total, next_offset=_PAGE_SIZE, **opts),
     )
 
 
@@ -63,22 +67,18 @@ async def search(
     country: str = "",
     sort: str = "date_desc",
     offset: int = 0,
+    append: int = 0,
 ):
-    results = _add_display_headlines(search_full(
-        query=q,
-        newspaper=newspaper,
-        category=category,
-        section=section,
-        date_from=date_from,
-        date_to=date_to,
-        location=location,
-        country=country,
-        sort=sort,
-        limit=20,
-        offset=offset,
+    filters = dict(
+        query=q, newspaper=newspaper, category=category, section=section,
+        date_from=date_from, date_to=date_to, location=location, country=country,
         db_path=_DB,
-    ), _DB)
-    opts = get_filter_options(_DB)
+    )
+    results = _add_display_headlines(
+        search_full(sort=sort, limit=_PAGE_SIZE, offset=offset, **filters), _DB
+    )
+    total = count_search_results(**filters)
+    next_offset = offset + _PAGE_SIZE
     ctx = _ctx(
         request,
         results=results,
@@ -92,8 +92,14 @@ async def search(
         country=country,
         sort=sort,
         offset=offset,
-        **opts,
+        total=total,
+        has_more=next_offset < total,
+        next_offset=next_offset,
+        **get_filter_options(_DB),
     )
+    # "Mehr laden" click: return only the new items + fresh load-more button
+    if append:
+        return _templates.TemplateResponse(request, "search_results_items.html", ctx)
     if request.headers.get("hx-request"):
         return _templates.TemplateResponse(request, "search_results.html", ctx)
     return _templates.TemplateResponse(request, "index.html", ctx)

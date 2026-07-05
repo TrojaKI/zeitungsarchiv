@@ -1,35 +1,7 @@
 {% if results %}
+  <p class="result-count">{{ total }} Artikel gefunden</p>
   <ul class="results">
-    {% for a in results %}
-    <li class="result-card{% if a.needs_review %} needs-review{% endif %}" onclick="location.href='/articles/{{ a.id }}'">
-      {% if a.thumb_path %}
-        <img src="/archive/{{ a.thumb_path }}"
-             alt="Vorschau {{ a.headline }}" class="thumb">
-      {% endif %}
-      <div class="result-info">
-        <a href="/articles/{{ a.id }}" class="headline">{{ a.display_headline or '(keine Schlagzeile)' }}</a>
-        <div class="meta">
-          {% if a.newspaper %}<span>{{ a.newspaper }}</span>{% endif %}
-          {% if a.article_date %}<span>{{ a.article_date }}</span>{% endif %}
-          {% if a.category %}<span class="tag">{{ a.category }}</span>{% endif %}
-          {% if a.needs_review %}<span class="badge-warn">Review</span>{% endif %}
-        </div>
-        {% if a.locations %}
-          {% set locs = a.locations | from_json %}
-          {% if locs %}
-          <div class="meta">
-            {% for loc in locs %}<span class="tag-location">{{ loc }}</span>{% endfor %}
-          </div>
-          {% endif %}
-        {% endif %}
-        {% if a.snippet %}
-          <p class="snippet">{{ a.snippet | safe }}</p>
-        {% elif a.summary %}
-          <p class="snippet">{{ a.summary }}</p>
-        {% endif %}
-      </div>
-    </li>
-    {% endfor %}
+    {% include "search_results_items.html" %}
   </ul>
 {% else %}
   <p class="empty">Keine Artikel gefunden.</p>

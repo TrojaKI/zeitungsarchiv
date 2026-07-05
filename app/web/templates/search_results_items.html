@@ -1,0 +1,40 @@
+{% for a in results %}
+<li class="result-card{% if a.needs_review %} needs-review{% endif %}" onclick="location.href='/articles/{{ a.id }}'">
+  {% if a.thumb_path %}
+    <img src="/archive/{{ a.thumb_path }}"
+         alt="Vorschau {{ a.headline }}" class="thumb">
+  {% endif %}
+  <div class="result-info">
+    <a href="/articles/{{ a.id }}" class="headline">{{ a.display_headline or '(keine Schlagzeile)' }}</a>
+    <div class="meta">
+      {% if a.newspaper %}<span>{{ a.newspaper }}</span>{% endif %}
+      {% if a.article_date %}<span>{{ a.article_date }}</span>{% endif %}
+      {% if a.category %}<span class="tag">{{ a.category }}</span>{% endif %}
+      {% if a.needs_review %}<span class="badge-warn">Review</span>{% endif %}
+    </div>
+    {% if a.locations %}
+      {% set locs = a.locations | from_json %}
+      {% if locs %}
+      <div class="meta">
+        {% for loc in locs %}<span class="tag-location">{{ loc }}</span>{% endfor %}
+      </div>
+      {% endif %}
+    {% endif %}
+    {% if a.snippet %}
+      <p class="snippet">{{ a.snippet | safe }}</p>
+    {% elif a.summary %}
+      <p class="snippet">{{ a.summary }}</p>
+    {% endif %}
+  </div>
+</li>
+{% endfor %}
+{% if has_more %}
+<li class="load-more">
+  <button type="button"
+          hx-get="/search?q={{ q|urlencode }}&newspaper={{ newspaper|urlencode }}&category={{ category|urlencode }}&section={{ section|urlencode }}&date_from={{ date_from|urlencode }}&date_to={{ date_to|urlencode }}&location={{ location|urlencode }}&country={{ country|urlencode }}&sort={{ sort|urlencode }}&offset={{ next_offset }}&append=1"
+          hx-target="closest li"
+          hx-swap="outerHTML">
+    Mehr laden ({{ total - next_offset }} weitere)
+  </button>
+</li>
+{% endif %}
