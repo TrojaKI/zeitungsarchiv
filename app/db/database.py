@@ -320,47 +320,21 @@ def delete_article(article_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
         conn.execute("DELETE FROM articles WHERE id = ?", (article_id,))
 
 
-def search_articles(
-    query: str,
-    newspaper: Optional[str] = None,
-    category: Optional[str] = None,
-    needs_review: Optional[bool] = None,
-    limit: int = 20,
-    offset: int = 0,
-    db_path: Path = _DEFAULT_DB_PATH,
-) -> list[dict]:
-    """Full-text search with optional filters. Returns a list of article dicts."""
-    params: list = []
+def _fts_sanitize(query: str) -> str:
+    """Quote each token so FTS5 operators in user input cannot raise syntax errors.
 
-    if query.strip():
-        base_sql = """
-            SELECT a.*
-            FROM articles_fts fts
-            JOIN articles a ON a.id = fts.rowid
-            WHERE articles_fts MATCH ?
-        """
-        params.append(query)
-    else:
-        base_sql = "SELECT * FROM articles WHERE 1=1"
-
-    if newspaper:
-        base_sql += " AND a.newspaper = ?" if "fts" in base_sql else " AND newspaper = ?"
-        params.append(newspaper)
-    if category:
-        base_sql += " AND a.category = ?" if "fts" in base_sql else " AND category = ?"
-        params.append(category)
-    if needs_review is not None:
-        col = "a.needs_review" if "fts" in base_sql else "needs_review"
-        base_sql += f" AND {col} = ?"
-        params.append(1 if needs_review else 0)
-
-    base_sql += " ORDER BY a.scan_date DESC LIMIT ? OFFSET ?" if "fts" in base_sql \
-        else " ORDER BY scan_date DESC LIMIT ? OFFSET ?"
-    params.extend([limit, offset])
-
-    with get_connection(db_path) as conn:
-        rows = conn.execute(base_sql, params).fetchall()
-    return [dict(r) for r in rows]
+    Unbalanced quotes, parentheses, AND/OR/NEAR, or stray '-' would otherwise
+    crash MATCH with sqlite3.OperationalError. A trailing '*' is preserved as
+    prefix operator (useful for German compound words).
+    """
+    quoted = []
+    for t in query.replace('"', " ").split():
+        core = t.rstrip("*")
+        if not core:
+            continue
+        suffix = "*" if t.endswith("*") else ""
+        quoted.append(f'"{core}"{suffix}')
+    return " ".join(quoted)
 
 
 def search_full(
@@ -384,7 +358,7 @@ def search_full(
     Uses FTS5 snippet() for search terms; falls back to plain SELECT otherwise.
     """
     params: list = []
-    q = query.strip().replace('"', "")  # sanitize FTS special chars
+    q = _fts_sanitize(query)
 
     if q:
         sql = """
@@ -446,7 +420,7 @@ def search_full(
 
 _PLACE_FIELDS = frozenset({
     "name", "address", "postal_code", "city", "country",
-    "phone", "hours", "url", "lat", "lng", "is_active", "state"
+    "phone", "hours", "url", "lat", "lng", "is_active", "state", "geocode_source"
 })
 _PA_FIELDS = frozenset({"description", "rating"})
 
@@ -517,19 +491,38 @@ def update_place_coords(place_id: int, lat: float, lng: float,
         )
 
 
-def get_places_without_coords(db_path: Path = _DEFAULT_DB_PATH) -> list[dict]:
-    """Return canonical places missing coordinates with a representative article link."""
+def get_places_without_coords(
+    db_path: Path = _DEFAULT_DB_PATH, include_failed: bool = True
+) -> list[dict]:
+    """Return canonical places missing coordinates with a representative article link.
+
+    include_failed=False skips places already marked geocode_source='failed' —
+    used by automatic ingestion so unresolvable places are not retried on every scan.
+    """
+    failed_filter = "" if include_failed else " AND (p.geocode_source IS NULL OR p.geocode_source != 'failed')"
     with get_connection(db_path) as conn:
         rows = conn.execute(
-            """SELECT p.id, p.name, p.address, p.postal_code, p.city, p.country,
+            f"""SELECT p.id, p.name, p.address, p.postal_code, p.city, p.country,
                       (SELECT pa.article_id FROM place_articles pa WHERE pa.place_id = p.id
                        ORDER BY pa.id ASC LIMIT 1) AS article_id,
                       (SELECT a.headline FROM articles a
                        JOIN place_articles pa ON pa.article_id = a.id
                        WHERE pa.place_id = p.id ORDER BY pa.id ASC LIMIT 1) AS headline
-               FROM places p WHERE p.lat IS NULL ORDER BY p.name"""
+               FROM places p WHERE p.lat IS NULL{failed_filter} ORDER BY p.name"""
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def mark_geocode_failed(place_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Mark a place as not geocodable so automatic ingestion stops retrying it.
+
+    A later successful geocode (manual button/CLI) overwrites the marker via
+    update_place_coords.
+    """
+    with get_connection(db_path) as conn:
+        conn.execute(
+            "UPDATE places SET geocode_source = 'failed' WHERE id = ?", (place_id,)
+        )
 
 
 def confirm_place_coords(place_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
@@ -632,6 +625,7 @@ def delete_place(pa_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
 _MANUAL_PLACE_FIELDS = (
     "name", "description", "address", "postal_code", "city",
     "country", "phone", "hours", "url", "is_active", "lat", "lng",
+    "geocode_source",
 )
 
 
@@ -647,8 +641,7 @@ def insert_manual_place(fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> int:
                (name, description, address, postal_code, city, country, phone, hours, url,
                 source, name_key, city_key)
                VALUES (:name, :description, :address, :postal_code, :city, :country,
-                       :phone, :hours, :url, 'manual',
-                       unicode_lower(:name_key), unicode_lower(:city_key))""",
+                       :phone, :hours, :url, 'manual', :name_key, :city_key)""",
             {
                 "name": name,
                 "description": fields.get("description") or None,
@@ -659,8 +652,8 @@ def insert_manual_place(fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> int:
                 "phone": fields.get("phone") or None,
                 "hours": fields.get("hours") or None,
                 "url": fields.get("url") or None,
-                "name_key": name.lower(),
-                "city_key": city.lower(),
+                "name_key": _make_key(name),
+                "city_key": _make_key(city),
             },
         )
         return cursor.lastrowid  # type: ignore[return-value]
@@ -680,12 +673,26 @@ def update_manual_place(place_id: int, fields: dict, db_path: Path = _DEFAULT_DB
     updates = {k: v for k, v in fields.items() if k in _MANUAL_PLACE_FIELDS}
     if not updates:
         return
-    if "name" in updates or "city" in updates:
-        updates["name_key"] = (updates.get("name") or "").lower().strip()
-        updates["city_key"] = (updates.get("city") or "").lower().strip()
-    set_clause = ", ".join(f"{k} = :{k}" for k in updates)
-    updates["_id"] = place_id
+    # name is NOT NULL — never overwrite it with None/empty
+    if "name" in updates and not (updates["name"] or "").strip():
+        del updates["name"]
+        if not updates:
+            return
     with get_connection(db_path) as conn:
+        # Keep name_key/city_key in sync when name or city changes
+        if "name" in updates or "city" in updates:
+            existing = conn.execute(
+                "SELECT name, city FROM places WHERE id = ? AND source = 'manual'",
+                (place_id,),
+            ).fetchone()
+            if not existing:
+                return
+            new_name = updates.get("name") or existing["name"] or ""
+            new_city = updates["city"] if "city" in updates else existing["city"]
+            updates["name_key"] = _make_key(new_name)
+            updates["city_key"] = _make_key(new_city or "")
+        set_clause = ", ".join(f"{k} = :{k}" for k in updates)
+        updates["_id"] = place_id
         conn.execute(
             f"UPDATE places SET {set_clause} WHERE id = :_id AND source = 'manual'",
             updates,

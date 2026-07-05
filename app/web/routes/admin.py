@@ -10,6 +10,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from markupsafe import escape
 
 log = logging.getLogger(__name__)
 
@@ -40,23 +41,35 @@ async def stats(request: Request):
 
 
 def _run_ingest():
-    """Background task: ingest all TIFFs in inbox, update status."""
+    """Background task: ingest all TIFFs in inbox, update status.
+
+    The lock is held for the entire run so a second trigger cannot process
+    the same inbox files concurrently.
+    """
     global _ingest_status
-    with _ingest_lock:
-        _ingest_status = {"state": "running", "message": "Verarbeitung läuft..."}
+    if not _ingest_lock.acquire(blocking=False):
+        log.warning("Ingestion already running, ignoring duplicate trigger")
+        return
     try:
+        _ingest_status = {"state": "running", "message": "Verarbeitung läuft..."}
         from app.worker.ingestion import ingest_directory
         ids = ingest_directory(_INBOX, _ARCHIVE, _DB)
         _ingest_status = {"state": "done", "message": f"{len(ids)} Artikel verarbeitet."}
     except Exception as exc:
         log.exception("Ingestion failed: %s", exc)
         _ingest_status = {"state": "error", "message": f"Fehler: {exc}"}
+    finally:
+        _ingest_lock.release()
 
 
 @router.post("/process")
 async def process_inbox(request: Request, background_tasks: BackgroundTasks):
     """Queue ingestion of all TIFFs in inbox and return immediately."""
     from app.worker.ingestion import ingest_directory
+
+    if _ingest_lock.locked():
+        msg = '<p class="process-ok">Verarbeitung läuft bereits...</p>'
+        return HTMLResponse(msg) if request.headers.get("hx-request") else JSONResponse({"queued": 0})
 
     tiffs = list(_INBOX.glob("*.tif")) + list(_INBOX.glob("*.tiff"))
     count = len(tiffs)
@@ -85,22 +98,26 @@ async def process_status():
         return HTMLResponse(
             f'<p class="process-ok" '
             f'hx-get="/process/status" hx-trigger="every 2s" hx-swap="outerHTML">'
-            f'{s["message"]}</p>'
+            f'{escape(s["message"])}</p>'
         )
     if s["state"] == "done":
-        return HTMLResponse(f'<p class="process-ok">&#10003; {s["message"]}</p>')
-    # error
-    return HTMLResponse(f'<p class="process-empty">{s["message"]}</p>')
+        return HTMLResponse(f'<p class="process-ok">&#10003; {escape(s["message"])}</p>')
+    # error (message may contain exception text)
+    return HTMLResponse(f'<p class="process-empty">{escape(s["message"])}</p>')
 
 
 @router.post("/geocode")
-async def geocode_places(request: Request):
-    """Geocode all places that are missing coordinates."""
+def geocode_places(request: Request):
+    """Geocode all places that are missing coordinates.
+
+    Sync handler on purpose: geocode_all_places() sleeps 1.1s per Nominatim
+    request — running it in FastAPI's threadpool keeps the event loop free.
+    """
     from app.worker.geocoder import geocode_all_places
     from app.db.database import get_places_without_coords
 
     pending = len(get_places_without_coords(_DB))
-    count = geocode_all_places(_DB)
+    count = geocode_all_places(_DB, retry_failed=True)
     if request.headers.get("hx-request"):
         if pending == 0:
             msg = '<p class="process-empty">Alle Orte haben bereits Koordinaten.</p>'

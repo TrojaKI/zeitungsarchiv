@@ -151,8 +151,11 @@ async def article_place_add(
 
 
 @router.post("/articles/{article_id}/reprocess-image")
-async def article_reprocess_image(article_id: int, request: Request):
-    """Re-run image preprocessing on the archived original TIFF."""
+def article_reprocess_image(article_id: int, request: Request):
+    """Re-run image preprocessing on the archived original TIFF.
+
+    Sync handler: the OpenCV pipeline takes seconds and must not block the event loop.
+    """
     archive_dir = Path(os.getenv("ARCHIVE_DIR", "/app/archive"))
     article = get_article(article_id, _DB)
     if article is None:

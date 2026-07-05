@@ -291,7 +291,7 @@ def geocode():
         click.echo("All places already geocoded.")
         return
     click.echo(f"Geocoding {len(pending)} place(s)...")
-    done = geocode_all_places(_DB)
+    done = geocode_all_places(_DB, retry_failed=True)
     click.echo(f"Done: {done}/{len(pending)} geocoded successfully.")
 
 

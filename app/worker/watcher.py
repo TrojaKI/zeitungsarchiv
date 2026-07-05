@@ -5,7 +5,7 @@ import re
 import time
 from pathlib import Path
 
-from watchdog.events import FileCreatedEvent, FileSystemEventHandler
+from watchdog.events import FileCreatedEvent, FileMovedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from app.db.database import init_db
@@ -36,7 +36,16 @@ class _TiffHandler(FileSystemEventHandler):
     def on_created(self, event: FileCreatedEvent) -> None:  # type: ignore[override]
         if event.is_directory:
             return
-        path = Path(event.src_path)
+        self._handle(Path(event.src_path))
+
+    def on_moved(self, event: FileMovedEvent) -> None:  # type: ignore[override]
+        # Scanners often write to a temp file and rename it into place —
+        # that produces a moved event, not a created event.
+        if event.is_directory:
+            return
+        self._handle(Path(event.dest_path))
+
+    def _handle(self, path: Path) -> None:
         if path.suffix.lower() not in _TIFF_SUFFIXES:
             return
 
@@ -44,15 +53,36 @@ class _TiffHandler(FileSystemEventHandler):
             log.info("Skipping raw scan part (use 'process' to stitch): %s", path.name)
             return
 
-        # Wait briefly so the scanner has finished writing the file
-        time.sleep(2)
-
-        if not path.exists():
+        if not _wait_until_stable(path):
             log.warning("File disappeared before ingestion: %s", path)
             return
 
         log.info("New scan detected: %s", path.name)
-        ingest(path, self.archive_dir, self.db_path)
+        try:
+            ingest(path, self.archive_dir, self.db_path)
+        except Exception:
+            # Never let an ingestion error propagate into the watchdog
+            # dispatcher — the watcher must keep running for the next scan.
+            log.exception("Ingestion failed for %s", path.name)
+
+
+def _wait_until_stable(path: Path, interval: float = 1.0, timeout: float = 30.0) -> bool:
+    """Wait until the file size stops changing (scanner finished writing).
+
+    Returns False if the file disappears or never appears within the timeout.
+    """
+    last_size = -1
+    waited = 0.0
+    while waited < timeout:
+        if not path.exists():
+            return False
+        size = path.stat().st_size
+        if size > 0 and size == last_size:
+            return True
+        last_size = size
+        time.sleep(interval)
+        waited += interval
+    return path.exists()
 
 
 def watch(

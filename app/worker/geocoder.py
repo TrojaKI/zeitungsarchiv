@@ -104,16 +104,22 @@ def _nominatim_search(query: str) -> dict | None:
     return None
 
 
-def geocode_all_places(db_path: Path) -> int:
+def geocode_all_places(db_path: Path, retry_failed: bool = False) -> int:
     """
     Geocode all places in the DB that are missing coordinates.
 
     Respects the Nominatim rate limit (1 req/s). Returns count of
     successfully geocoded places.
-    """
-    from app.db.database import get_places_without_coords, update_place_coords
 
-    pending = get_places_without_coords(db_path)
+    retry_failed=False (automatic ingestion) skips places already marked
+    geocode_source='failed'; True (manual button/CLI) retries them.
+    Unresolvable places are marked 'failed' so they are not retried on
+    every subsequent scan.
+    """
+    from app.db.database import (get_places_without_coords, mark_geocode_failed,
+                                 update_place_coords)
+
+    pending = get_places_without_coords(db_path, include_failed=retry_failed)
     if not pending:
         log.info("All places already geocoded.")
         return 0
@@ -130,7 +136,8 @@ def geocode_all_places(db_path: Path) -> int:
                      result.get("state"))
             success += 1
         else:
-            log.warning("Could not geocode place id=%d %r",
+            mark_geocode_failed(place["id"], db_path)
+            log.warning("Could not geocode place id=%d %r — marked as failed",
                         place["id"], place.get("name"))
         # Always sleep between requests regardless of result
         time.sleep(_RATE_LIMIT_SECONDS)

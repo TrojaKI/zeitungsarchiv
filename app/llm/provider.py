@@ -127,9 +127,9 @@ def _chat_openrouter(prompt: str) -> str:
                     "X-Title": "Zeitungsarchiv",
                 },
             )
-        except RateLimitError:
+        except RateLimitError as exc:
             log.warning("OpenRouter model %r rate-limited, trying next...", model)
-            last_exc = RateLimitError  # type: ignore[assignment]
+            last_exc = exc
         except (NotFoundError, BadRequestError) as exc:
             log.warning("OpenRouter model %r not found / invalid, trying next...", model)
             last_exc = exc
@@ -158,8 +158,11 @@ def _chat_ollama(prompt: str) -> str:
             if content is None:
                 raise RuntimeError(f"Ollama returned null content (model={model})")
             return content
-        except RuntimeError as exc:
-            log.warning("Ollama model %r failed, trying next...", model)
+        # Broad catch on purpose: ollama raises ResponseError/httpx.ConnectError
+        # (not RuntimeError) when the host is down or the model is missing —
+        # all of these must trigger the model/provider fallback chain.
+        except Exception as exc:
+            log.warning("Ollama model %r failed (%s), trying next...", model, exc)
             last_exc = exc
     raise RuntimeError(f"All Ollama models exhausted: {models}") from last_exc
 

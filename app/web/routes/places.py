@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from markupsafe import escape
 
 from app.db.database import (delete_manual_place, delete_place, get_all_places,
                               get_geocoded_places, get_manual_place, get_place,
@@ -28,7 +29,7 @@ async def places_cities(country: str = ""):
     opts = get_place_filter_options(country=country, db_path=_DB)
     options = '<option value="">Alle Orte</option>'
     for c in opts["cities"]:
-        options += f'<option value="{c}">{c}</option>'
+        options += f'<option value="{escape(c)}">{escape(c)}</option>'
     return HTMLResponse(options)
 
 
@@ -38,7 +39,7 @@ async def places_states():
     opts = get_place_filter_options(db_path=_DB)
     options = '<option value="">Alle Bundesländer</option>'
     for s in opts["states"]:
-        options += f'<option value="{s}">{s}</option>'
+        options += f'<option value="{escape(s)}">{escape(s)}</option>'
     return HTMLResponse(options)
 
 
@@ -119,7 +120,8 @@ async def manual_place_delete(place_id: int):
 
 
 @router.post("/places/manual/{place_id}/geocode", response_class=HTMLResponse)
-async def manual_place_geocode(place_id: int):
+def manual_place_geocode(place_id: int):
+    # Sync handler: Nominatim call + rate-limit sleep must not block the event loop
     from app.worker.geocoder import geocode_place as _geocode
     from fastapi.responses import Response
     place = get_manual_place(place_id, _DB)
@@ -220,10 +222,11 @@ async def place_update(
 
 
 @router.post("/places/{place_id}/geocode", response_class=HTMLResponse)
-async def place_geocode(place_id: int):
+def place_geocode(place_id: int):
     """Trigger Nominatim geocoding for a single place and return a status fragment.
 
     place_id refers to place_articles.id; geocoding updates the canonical places row.
+    Sync handler: Nominatim call + rate-limit sleep must not block the event loop.
     """
     from app.worker.geocoder import geocode_place as _geocode
     # get_place resolves pa_id to the canonical place fields
@@ -278,7 +281,7 @@ async def place_merge_candidates(canonical_id: int):
     for c in candidates:
         label = c["name"] + (f" ({c['city']})" if c["city"] else "")
         label += f" – {c['article_count']} Artikel"
-        opts += f'<option value="{c["id"]}">{label}</option>'
+        opts += f'<option value="{c["id"]}">{escape(label)}</option>'
     return HTMLResponse(opts)
 
 

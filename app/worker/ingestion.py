@@ -138,7 +138,8 @@ def ingest(
         "thumb_path": ocr_result["thumb_path"],
         "ocr_confidence": ocr_result["ocr_confidence"],
         "needs_review": int(ocr_result["needs_review"]),
-        "meta_source": ocr_result.get("meta_source", metadata.get("meta_source", "auto")),
+        # metadata wins: it is set to 'partial' when critical fields are missing
+        "meta_source": metadata.get("meta_source") or ocr_result.get("meta_source", "auto"),
         "article_group": article_group,
         "page_number": page_number,
     }
