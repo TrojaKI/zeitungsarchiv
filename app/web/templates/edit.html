@@ -57,8 +57,17 @@
       <textarea name="summary" rows="4">{{ article.summary or '' }}</textarea>
     </label>
 
+    <details class="ocr-edit">
+      <summary>OCR-Volltext korrigieren</summary>
+      <p class="ocr-edit-note">Änderungen aktualisieren automatisch den Suchindex.</p>
+      <textarea name="full_text" rows="18">{{ article.full_text or '' }}</textarea>
+    </details>
+
     <div class="actions">
       <button type="submit" class="btn">Speichern</button>
+      {% if article.needs_review %}
+      <button type="submit" name="save_next" value="1" class="btn">Speichern &amp; nächster Review</button>
+      {% endif %}
       <a href="/articles/{{ article.id }}" class="btn-secondary">Abbrechen</a>
     </div>
   </form>

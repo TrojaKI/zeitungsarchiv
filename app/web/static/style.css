@@ -726,6 +726,33 @@ details summary:hover { color: var(--accent); }
 .edit-form label select,
 .edit-form label textarea { width: 100%; }
 
+/* OCR full-text editor (collapsed by default) */
+.ocr-edit {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 0 .8rem;
+}
+.ocr-edit summary {
+  cursor: pointer;
+  padding: .55rem 0;
+  font-size: .82rem;
+  color: var(--ink-body);
+  font-weight: 500;
+}
+.ocr-edit-note {
+  font-size: .74rem;
+  color: var(--muted);
+  margin: .1rem 0 .5rem;
+}
+.ocr-edit textarea {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  line-height: 1.5;
+  margin-bottom: .7rem;
+}
+
 /* Places edit */
 .places-edit { margin-top: 2rem; }
 

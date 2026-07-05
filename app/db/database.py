@@ -195,6 +195,9 @@ def init_db(db_path: Path = _DEFAULT_DB_PATH) -> None:
 
         # Drop before executescript so the new schema can recreate it with the source-check
         conn.execute("DROP TRIGGER IF EXISTS place_articles_cleanup")
+        # Recreate the FTS update trigger so existing DBs pick up the WHEN guard that
+        # prevents FTS index corruption during article edits (see schema.sql).
+        conn.execute("DROP TRIGGER IF EXISTS articles_au")
         conn.executescript(schema)
         # Migrate existing DBs: add columns introduced after initial schema
         existing = {row[1] for row in conn.execute("PRAGMA table_info(articles)")}
@@ -896,6 +899,19 @@ def get_review_count(db_path: Path = _DEFAULT_DB_PATH) -> int:
     with get_connection(db_path) as conn:
         row = conn.execute("SELECT COUNT(*) FROM articles WHERE needs_review = 1").fetchone()
     return row[0] if row else 0
+
+
+def get_next_review_article(exclude_id: int, db_path: Path = _DEFAULT_DB_PATH) -> Optional[int]:
+    """Return the id of the next article still flagged for review, or None.
+
+    Used by the "save & next review" flow to jump straight to the next item.
+    """
+    with get_connection(db_path) as conn:
+        row = conn.execute(
+            "SELECT id FROM articles WHERE needs_review = 1 AND id != ? ORDER BY id LIMIT 1",
+            (exclude_id,),
+        ).fetchone()
+    return row[0] if row else None
 
 
 def get_stats(db_path: Path = _DEFAULT_DB_PATH) -> dict:

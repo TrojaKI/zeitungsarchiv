@@ -9,8 +9,8 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.db.database import (add_place_to_article, delete_article, get_article, get_books,
-                              get_group_articles, get_places, get_recipes, get_review_count,
-                              update_article)
+                              get_group_articles, get_next_review_article, get_places,
+                              get_recipes, get_review_count, update_article)
 from app.web.templating import templates as _templates
 from app.worker.preprocess import preprocess
 
@@ -92,27 +92,37 @@ async def article_update(
     tags: str = Form(""),       # comma-separated
     locations: str = Form(""),  # comma-separated
     urls: str = Form(""),       # comma-separated
+    full_text: str = Form(""),
+    save_next: str = Form(""),  # "1" → jump to next review article after saving
 ):
     def split_csv(s: str) -> list[str]:
         return [x.strip() for x in s.split(",") if x.strip()]
 
-    update_article(
-        article_id,
-        {
-            "newspaper": newspaper or None,
-            "section": section or None,
-            "article_date": article_date or None,
-            "page": page or None,
-            "headline": headline,
-            "summary": summary,
-            "category": category,
-            "tags": split_csv(tags),
-            "locations": split_csv(locations),
-            "urls": split_csv(urls),
-            "meta_source": "manual",
-            "needs_review": 0,
-        },
-    )
+    fields = {
+        "newspaper": newspaper or None,
+        "section": section or None,
+        "article_date": article_date or None,
+        "page": page or None,
+        "headline": headline,
+        "summary": summary,
+        "category": category,
+        "tags": split_csv(tags),
+        "locations": split_csv(locations),
+        "urls": split_csv(urls),
+        "meta_source": "manual",
+        "needs_review": 0,
+    }
+    # Only overwrite the OCR text when the (optional) field was actually submitted;
+    # an empty textarea would otherwise wipe the full text.
+    if full_text.strip():
+        fields["full_text"] = full_text
+    update_article(article_id, fields, _DB)
+
+    if save_next:
+        next_id = get_next_review_article(article_id, _DB)
+        if next_id is not None:
+            return RedirectResponse(f"/articles/{next_id}/edit", status_code=303)
+        return RedirectResponse("/review", status_code=303)
     return RedirectResponse(f"/articles/{article_id}", status_code=303)
 
 

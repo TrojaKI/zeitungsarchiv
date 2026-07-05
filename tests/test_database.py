@@ -71,6 +71,50 @@ class TestCountSearchResults:
         assert count == len(db.search_full(query="(wien", limit=1000, db_path=db_path))
 
 
+class TestUpdateArticleFtsSync:
+    """Regression: updating FTS-indexed columns must not corrupt the FTS index.
+
+    The articles_updated_at trigger issues a nested UPDATE; without the WHEN
+    guard on articles_au this re-entered the FTS trigger and raised
+    'database disk image is malformed'.
+    """
+
+    def test_update_full_text_reindexes_without_corruption(self, db_path: Path):
+        aid = db.insert_article(_article(full_text="alter text ohne stichwort"), db_path)
+
+        db.update_article(aid, {"full_text": "neuer text mit zwetschkenroester"}, db_path)
+
+        assert db.count_search_results(query="zwetschkenroester", db_path=db_path) == 1
+        assert db.count_search_results(query="stichwort", db_path=db_path) == 0
+
+    def test_non_indexed_update_leaves_fts_intact(self, db_path: Path):
+        aid = db.insert_article(_article(full_text="findbar kennwort", page="3"), db_path)
+
+        # updating a non-FTS column must neither crash nor drop the article
+        db.update_article(aid, {"page": "7"}, db_path)
+
+        assert db.count_search_results(query="kennwort", db_path=db_path) == 1
+
+
+class TestGetNextReviewArticle:
+    """The save-and-next flow needs the next flagged article, skipping the current."""
+
+    def test_returns_other_flagged_article(self, db_path: Path):
+        a1 = db.insert_article(_article(filename="a.tif", needs_review=1), db_path)
+        a2 = db.insert_article(_article(filename="b.tif", needs_review=1), db_path)
+        assert db.get_next_review_article(a1, db_path) == a2
+
+    def test_excludes_current_article(self, db_path: Path):
+        a1 = db.insert_article(_article(filename="a.tif", needs_review=1), db_path)
+        # a1 is the only flagged article — excluding it leaves nothing
+        assert db.get_next_review_article(a1, db_path) is None
+
+    def test_ignores_non_flagged(self, db_path: Path):
+        a1 = db.insert_article(_article(filename="a.tif", needs_review=1), db_path)
+        db.insert_article(_article(filename="b.tif", needs_review=0), db_path)
+        assert db.get_next_review_article(a1, db_path) is None
+
+
 class TestFtsSanitize:
     """User input with FTS5 operators must never raise OperationalError."""
 

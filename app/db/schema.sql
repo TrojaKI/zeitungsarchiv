@@ -53,8 +53,19 @@ CREATE TRIGGER IF NOT EXISTS articles_ai AFTER INSERT ON articles BEGIN
     VALUES (new.id, new.headline, new.summary, new.full_text, new.tags);
 END;
 
--- Trigger: keep FTS index in sync on UPDATE
-CREATE TRIGGER IF NOT EXISTS articles_au AFTER UPDATE ON articles BEGIN
+-- Trigger: keep FTS index in sync on UPDATE.
+-- The WHEN guard is essential: the articles_updated_at trigger below issues a
+-- nested UPDATE on the same row. Without the guard that nested write re-enters
+-- this trigger with old == new for the FTS columns, causing a double FTS5
+-- 'delete' that corrupts the external-content index ("database disk image is
+-- malformed"). Firing only when an indexed column actually changed avoids that
+-- and skips needless FTS churn on non-text updates (page, coords, updated_at).
+CREATE TRIGGER IF NOT EXISTS articles_au AFTER UPDATE ON articles
+WHEN old.headline  IS NOT new.headline
+  OR old.summary   IS NOT new.summary
+  OR old.full_text IS NOT new.full_text
+  OR old.tags      IS NOT new.tags
+BEGIN
     INSERT INTO articles_fts(articles_fts, rowid, headline, summary, full_text, tags)
     VALUES ('delete', old.id, old.headline, old.summary, old.full_text, old.tags);
     INSERT INTO articles_fts(rowid, headline, summary, full_text, tags)
