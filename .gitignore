@@ -35,3 +35,6 @@ examples/*
 # Logs
 *.log
 logs/
+
+*.txt
+
