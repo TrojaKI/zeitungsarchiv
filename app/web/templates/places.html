@@ -23,6 +23,37 @@
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
   #map { height: 520px; border-radius: 6px; border: 1px solid #ddd; }
+
+  /* Fullscreen map overlay — same layering as .lightbox-overlay in style.css */
+  .tab-panel.map-fullscreen {
+    position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column;
+    gap: .6rem; padding: .6rem; background: var(--paper);
+  }
+  .map-fullscreen #map { flex: 1; height: auto; border-radius: 0; }
+  .map-fs-bar { display: none; }
+  .map-fullscreen .map-fs-bar { display: block; }
+  .map-fullscreen .search-box { margin: 0; padding: .6rem .8rem; }
+  body.map-fullscreen-open { overflow: hidden; }
+
+  .map-fs-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; background: var(--card); color: var(--ink);
+  }
+  .map-fs-btn:hover { background: var(--paper-warm); }
+  .map-fs-btn svg {
+    width: 17px; height: 17px; fill: none; stroke: currentColor;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  }
+
+  .map-count {
+    background: rgba(253, 250, 244, .92); padding: .3rem .6rem; border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.2); font-size: .78rem; color: #333;
+  }
+
+  @media (max-width: 768px) {
+    .tab-panel.map-fullscreen { padding: .3rem; gap: .3rem; }
+    .map-fullscreen .search-box { padding: .4rem .5rem; }
+  }
   .leaflet-popup-content strong { display: block; margin-bottom: .3rem; }
   .leaflet-popup-content .rating-badge {
     display: inline-block; padding: .1rem .5rem; border-radius: 4px;
@@ -74,6 +105,8 @@
     </div>
   </form>
 </section>
+<!-- marks where .search-box returns to when leaving fullscreen -->
+<div id="search-box-anchor" hidden></div>
 
 <div style="margin-bottom:.75rem;text-align:right">
   <button hx-get="/places/new-form"
@@ -95,6 +128,7 @@
 </div>
 
 <div id="tab-map" class="tab-panel">
+  <div class="map-fs-bar"></div>
   <div id="map"></div>
 </div>
 
@@ -124,6 +158,8 @@ let mapInitialized = false;
 let leafletMap = null;
 let markerCluster = null;
 let userHasNavigated = false;
+let isFullscreen = false;
+let countControlDiv = null;
 const MAP_STORAGE_KEY = 'places_map_state';
 
 function switchTab(name, btn) {
@@ -155,7 +191,10 @@ function loadMapMarkers() {
   fetch('/places/map-data?' + getFilterParams())
     .then(r => r.json())
     .then(rows => {
-      if (!rows.length) return;
+      if (!rows.length) {
+        updateCount(0, 0);
+        return;
+      }
       // Group by canonical place id (one marker per physical location)
       const byPlace = {};
       rows.forEach(r => {
@@ -191,6 +230,7 @@ function loadMapMarkers() {
         markers.push(marker);
       });
       markerCluster.addLayers(markers);
+      updateCount(Object.keys(byPlace).length, rows.length);
       // Only auto-fit if user hasn't manually navigated yet
       if (bounds.length && !userHasNavigated) {
         leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
@@ -212,6 +252,74 @@ function addLegend() {
   legend.addTo(leafletMap);
 }
 
+function addCountControl() {
+  const control = L.control({ position: 'bottomleft' });
+  control.onAdd = function () {
+    countControlDiv = L.DomUtil.create('div', 'map-count');
+    countControlDiv.textContent = '…';
+    return countControlDiv;
+  };
+  control.addTo(leafletMap);
+}
+
+function updateCount(placeCount, articleCount) {
+  if (!countControlDiv) return;
+  countControlDiv.textContent = placeCount
+    ? `${placeCount} Orte · ${articleCount} Artikel`
+    : 'keine Treffer';
+}
+
+// Inline SVG instead of a glyph — no font dependency
+const ICON_EXPAND = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8V3h5M17 8V3h-5M3 12v5h5M17 12v5h-5"/></svg>';
+const ICON_COLLAPSE = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3v5H3M12 3v5h5M8 17v-5H3M12 17v-5h5"/></svg>';
+let fullscreenButton = null;
+
+function addFullscreenControl() {
+  const control = L.control({ position: 'topright' });
+  control.onAdd = function () {
+    fullscreenButton = L.DomUtil.create('a', 'leaflet-bar map-fs-btn');
+    fullscreenButton.href = '#';
+    fullscreenButton.setAttribute('role', 'button');
+    L.DomEvent.on(fullscreenButton, 'click', L.DomEvent.stop)
+              .on(fullscreenButton, 'click', toggleFullscreen);
+    updateFullscreenButton();
+    return fullscreenButton;
+  };
+  control.addTo(leafletMap);
+}
+
+function updateFullscreenButton() {
+  if (!fullscreenButton) return;
+  fullscreenButton.innerHTML = isFullscreen ? ICON_COLLAPSE : ICON_EXPAND;
+  const label = isFullscreen ? 'Vollbild beenden (Esc)' : 'Karte im Vollbild anzeigen';
+  fullscreenButton.title = label;
+  fullscreenButton.setAttribute('aria-label', label);
+}
+
+function toggleFullscreen() {
+  const panel = document.getElementById('tab-map');
+  const searchBox = document.querySelector('.search-box');
+  isFullscreen = !isFullscreen;
+
+  if (isFullscreen) {
+    panel.querySelector('.map-fs-bar').appendChild(searchBox);
+    panel.classList.add('map-fullscreen');
+    document.body.classList.add('map-fullscreen-open');
+  } else {
+    const anchor = document.getElementById('search-box-anchor');
+    anchor.parentNode.insertBefore(searchBox, anchor);
+    panel.classList.remove('map-fullscreen');
+    document.body.classList.remove('map-fullscreen-open');
+  }
+  updateFullscreenButton();
+  // Leaflet must re-measure the container after the reflow
+  requestAnimationFrame(() => leafletMap.invalidateSize());
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && isFullscreen) toggleFullscreen();
+});
+
 // Map initializes lazily on first tab switch, not on page load
 
 function initMap() {
@@ -232,6 +340,8 @@ function initMap() {
   markerCluster = L.markerClusterGroup({ maxClusterRadius: 45, showCoverageOnHover: false });
   leafletMap.addLayer(markerCluster);
   addLegend();
+  addCountControl();
+  addFullscreenControl();
   // Save position after any user pan/zoom (also captures fitBounds result on first open)
   leafletMap.on('moveend zoomend', function() {
     saveMapState();
