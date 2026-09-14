@@ -730,10 +730,10 @@ def delete_place(pa_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:
 # Manual place CRUD (no place_articles link, source='manual')
 # ---------------------------------------------------------------------------
 
-_MANUAL_PLACE_FIELDS = (
+_CANONICAL_PLACE_FIELDS = (
     "name", "description", "address", "postal_code", "city",
     "country", "phone", "hours", "url", "is_active", "lat", "lng",
-    "geocode_source",
+    "geocode_source", "state",
 )
 
 
@@ -776,9 +776,15 @@ def get_manual_place(place_id: int, db_path: Path = _DEFAULT_DB_PATH) -> dict | 
     return dict(row) if row else None
 
 
-def update_manual_place(place_id: int, fields: dict, db_path: Path = _DEFAULT_DB_PATH) -> None:
-    """Update canonical fields of a manual place."""
-    updates = {k: v for k, v in fields.items() if k in _MANUAL_PLACE_FIELDS}
+def update_canonical_place(place_id: int, fields: dict,
+                           db_path: Path = _DEFAULT_DB_PATH) -> None:
+    """Update canonical fields of a place by places.id, regardless of its source.
+
+    Used by the places list, which edits manual and article-sourced places alike.
+    Article-specific description and rating live in place_articles and are not
+    touched here — use update_place() for those.
+    """
+    updates = {k: v for k, v in fields.items() if k in _CANONICAL_PLACE_FIELDS}
     if not updates:
         return
     # name is NOT NULL — never overwrite it with None/empty
@@ -790,8 +796,7 @@ def update_manual_place(place_id: int, fields: dict, db_path: Path = _DEFAULT_DB
         # Keep name_key/city_key in sync when name or city changes
         if "name" in updates or "city" in updates:
             existing = conn.execute(
-                "SELECT name, city FROM places WHERE id = ? AND source = 'manual'",
-                (place_id,),
+                "SELECT name, city FROM places WHERE id = ?", (place_id,)
             ).fetchone()
             if not existing:
                 return
@@ -801,10 +806,14 @@ def update_manual_place(place_id: int, fields: dict, db_path: Path = _DEFAULT_DB
             updates["city_key"] = _make_key(new_city or "")
         set_clause = ", ".join(f"{k} = :{k}" for k in updates)
         updates["_id"] = place_id
-        conn.execute(
-            f"UPDATE places SET {set_clause} WHERE id = :_id AND source = 'manual'",
-            updates,
-        )
+        conn.execute(f"UPDATE places SET {set_clause} WHERE id = :_id", updates)
+
+
+def get_canonical_place(place_id: int, db_path: Path = _DEFAULT_DB_PATH) -> dict | None:
+    """Return a place by places.id regardless of source, or None if not found."""
+    with get_connection(db_path) as conn:
+        row = conn.execute("SELECT * FROM places WHERE id = ?", (place_id,)).fetchone()
+    return dict(row) if row else None
 
 
 def delete_manual_place(place_id: int, db_path: Path = _DEFAULT_DB_PATH) -> None:

@@ -5,14 +5,17 @@ import sqlite3
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (HTMLResponse, JSONResponse, RedirectResponse,
+                               Response)
 from markupsafe import escape
 
 from app.db.database import (delete_manual_place, delete_place, get_all_places,
-                              get_geocoded_places, get_manual_place, get_place,
+                              get_canonical_place, get_geocoded_places,
+                              get_manual_place, get_place,
                               get_place_filter_options, get_review_count,
-                              insert_manual_place, merge_places, update_manual_place,
-                              update_place, update_place_coords)
+                              insert_manual_place, merge_places,
+                              update_canonical_place, update_place,
+                              update_place_coords)
 from app.web.templating import templates as _templates
 
 router = APIRouter()
@@ -43,14 +46,48 @@ async def places_states():
     return HTMLResponse(options)
 
 
+_DUPLICATE_MESSAGE = "Ein Ort mit diesem Namen und dieser Stadt existiert bereits."
+
+
+def _place_form(request: Request, place: dict | None = None,
+                error: str = "") -> HTMLResponse:
+    """Render the shared create/edit form partial for #manual-place-form."""
+    return _templates.TemplateResponse(
+        request, "place_form.html", {"request": request, "place": place, "error": error}
+    )
+
+
+def _refresh_places() -> Response:
+    """Tell HTMX to reload the places list, like set-active and merge do."""
+    response = Response(status_code=204)
+    response.headers["HX-Refresh"] = "true"
+    return response
+
+
+def _coord_fields(lat: str, lng: str) -> dict:
+    """Parse lat/lng form values; entering coordinates by hand counts as manual geocoding."""
+    fields: dict = {}
+    try:
+        if lat:
+            fields["lat"] = float(lat)
+        if lng:
+            fields["lng"] = float(lng)
+    except ValueError:
+        return {}
+    if fields:
+        fields["geocode_source"] = "manual"
+    return fields
+
+
 @router.get("/places/new-form", response_class=HTMLResponse)
 async def places_new_form(request: Request):
     """Return the inline manual-place creation form partial."""
-    return _templates.TemplateResponse(request, "places_new_form.html", {"request": request})
+    return _place_form(request)
 
 
 @router.post("/places/create")
 async def place_create(
+    request: Request,
     name: str = Form(""),
     description: str = Form(""),
     address: str = Form(""),
@@ -61,24 +98,30 @@ async def place_create(
     hours: str = Form(""),
     url: str = Form(""),
 ):
+    submitted = {"name": name, "description": description, "address": address,
+                 "postal_code": postal_code, "city": city, "country": country,
+                 "phone": phone, "hours": hours, "url": url}
     if not name.strip():
-        return HTMLResponse("Name ist ein Pflichtfeld.", status_code=400)
+        return _place_form(request, submitted, error="Name ist ein Pflichtfeld.")
     try:
-        insert_manual_place(
-            {"name": name, "description": description, "address": address,
-             "postal_code": postal_code, "city": city, "country": country,
-             "phone": phone, "hours": hours, "url": url},
-            _DB,
-        )
+        insert_manual_place(submitted, _DB)
     except sqlite3.IntegrityError:
-        return HTMLResponse(
-            "Ein Ort mit diesem Namen und dieser Stadt existiert bereits.", status_code=409
-        )
-    return RedirectResponse("/places", status_code=303)
+        return _place_form(request, submitted, error=_DUPLICATE_MESSAGE)
+    return _refresh_places()
 
 
-@router.post("/places/manual/{place_id}")
-async def manual_place_update(
+@router.get("/places/canonical/{place_id}/edit-form", response_class=HTMLResponse)
+async def place_edit_form(request: Request, place_id: int):
+    """Return the inline edit form for a canonical place (manual or article-sourced)."""
+    place = get_canonical_place(place_id, _DB)
+    if not place:
+        return HTMLResponse("Ort nicht gefunden", status_code=404)
+    return _place_form(request, place)
+
+
+@router.post("/places/canonical/{place_id}/update")
+async def place_canonical_update(
+    request: Request,
     place_id: int,
     name: str = Form(""),
     description: str = Form(""),
@@ -86,6 +129,7 @@ async def manual_place_update(
     postal_code: str = Form(""),
     city: str = Form(""),
     country: str = Form(""),
+    state: str = Form(""),
     phone: str = Form(""),
     hours: str = Form(""),
     url: str = Form(""),
@@ -93,24 +137,31 @@ async def manual_place_update(
     lat: str = Form(""),
     lng: str = Form(""),
 ):
+    """Update the shared master data of a place from the places list.
+
+    Article-specific description and rating stay with the article — they are edited
+    via /articles/{id}/edit.
+    """
+    existing = get_canonical_place(place_id, _DB)
+    if not existing:
+        return HTMLResponse("Ort nicht gefunden", status_code=404)
     fields: dict = {
         "name": name or None, "description": description or None,
         "address": address or None, "postal_code": postal_code or None,
         "city": city or None, "country": country or None,
-        "phone": phone or None, "hours": hours or None,
-        "url": url or None, "is_active": is_active,
+        "state": state or None, "phone": phone or None,
+        "hours": hours or None, "url": url or None, "is_active": is_active,
+        **_coord_fields(lat, lng),
     }
+    # On error re-render the form with what was typed, keeping id and source intact
+    submitted = {**fields, "id": place_id, "source": existing["source"]}
+    if not name.strip():
+        return _place_form(request, submitted, error="Name ist ein Pflichtfeld.")
     try:
-        if lat:
-            fields["lat"] = float(lat)
-        if lng:
-            fields["lng"] = float(lng)
-        if lat or lng:
-            fields["geocode_source"] = "manual"
-    except ValueError:
-        pass
-    update_manual_place(place_id, fields, _DB)
-    return RedirectResponse("/places", status_code=303)
+        update_canonical_place(place_id, fields, _DB)
+    except sqlite3.IntegrityError:
+        return _place_form(request, submitted, error=_DUPLICATE_MESSAGE)
+    return _refresh_places()
 
 
 @router.post("/places/manual/{place_id}/delete")
