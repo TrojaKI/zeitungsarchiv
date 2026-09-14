@@ -19,6 +19,7 @@ import pytest
 from fastapi import FastAPI
 from starlette.testclient import TestClient
 
+from app.db import database as db_module
 from app.db.database import init_db
 from app.web.routes import admin, articles, books, places, recipes, review, search
 
@@ -133,3 +134,144 @@ class TestRoutesSmokeTest:
     def test_article_edit_not_found(self, client: TestClient) -> None:
         """Non-existent article edit returns 404, not 500."""
         assert client.get("/articles/999/edit").status_code == 404
+
+
+class TestPlaceEditing:
+    """Both manual and article-sourced places must be editable from the places list.
+
+    Before this, manual places had no edit form at all: once created via
+    "+ Ort hinzufügen" they could only be deleted and re-entered.
+    """
+
+    def _manual_place(self, test_db: Path, name: str = "Café Prückel",
+                      city: str = "Wien") -> int:
+        return db_module.insert_manual_place({"name": name, "city": city}, test_db)
+
+    def _article_place(self, test_db: Path) -> int:
+        article_id = db_module.insert_article(
+            {
+                "filename": "scan001.tif", "scan_date": "2026-07-05",
+                "newspaper": "Kurier", "article_date": "2026-07-01", "page": "3",
+                "headline": "Ein Heuriger", "summary": "Test", "category": "Lokales",
+                "tags": [], "full_text": "Text", "image_path": "s/i.webp",
+                "thumb_path": "s/t.jpg", "ocr_confidence": 90.0, "needs_review": 0,
+                "meta_source": "auto",
+            },
+            test_db,
+        )
+        db_module.insert_places(article_id, [{"name": "Gasthaus Test", "city": "Graz"}], test_db)
+        return db_module.get_places(article_id, test_db)[0]["place_id"]
+
+    def test_edit_form_is_prefilled_for_manual_place(
+        self, client: TestClient, test_db: Path
+    ) -> None:
+        place_id = self._manual_place(test_db)
+
+        with strict_template_response():
+            response = client.get(f"/places/canonical/{place_id}/edit-form")
+
+        assert response.status_code == 200
+        assert 'value="Café Prückel"' in response.text
+
+    def test_edit_form_for_article_place_points_to_the_article(
+        self, client: TestClient, test_db: Path
+    ) -> None:
+        """Description and rating are per-article — the form must say so, not offer them."""
+        place_id = self._article_place(test_db)
+
+        with strict_template_response():
+            response = client.get(f"/places/canonical/{place_id}/edit-form")
+
+        assert response.status_code == 200
+        assert "im jeweiligen Artikel" in response.text
+
+    def test_edit_form_unknown_place_returns_404(self, client: TestClient) -> None:
+        assert client.get("/places/canonical/999999/edit-form").status_code == 404
+
+    def test_update_manual_place_persists_and_refreshes(
+        self, client: TestClient, test_db: Path
+    ) -> None:
+        place_id = self._manual_place(test_db)
+
+        response = client.post(
+            f"/places/canonical/{place_id}/update",
+            data={"name": "Café Central", "city": "Wien"},
+        )
+
+        assert response.headers.get("hx-refresh") == "true"
+        assert db_module.get_canonical_place(place_id, test_db)["name"] == "Café Central"
+
+    def test_update_article_place_persists(self, client: TestClient, test_db: Path) -> None:
+        """Article-sourced places were previously blocked by a source='manual' filter."""
+        place_id = self._article_place(test_db)
+
+        client.post(
+            f"/places/canonical/{place_id}/update",
+            data={"name": "Gasthaus Test", "city": "Graz", "phone": "0316 123"},
+        )
+
+        assert db_module.get_canonical_place(place_id, test_db)["phone"] == "0316 123"
+
+    def test_update_persists_state_and_coordinates(
+        self, client: TestClient, test_db: Path
+    ) -> None:
+        place_id = self._manual_place(test_db)
+
+        client.post(
+            f"/places/canonical/{place_id}/update",
+            data={"name": "Café Prückel", "city": "Wien", "state": "Wien",
+                  "lat": "48.2", "lng": "16.38"},
+        )
+
+        place = db_module.get_canonical_place(place_id, test_db)
+        assert place["state"] == "Wien"
+        assert place["lat"] == 48.2
+        assert place["geocode_source"] == "manual"
+
+    def test_duplicate_rename_shows_error_instead_of_500(
+        self, client: TestClient, test_db: Path
+    ) -> None:
+        """places_dedup is UNIQUE(name_key, city_key) — a clash must not blow up."""
+        self._manual_place(test_db, name="Café Central", city="Wien")
+        place_id = self._manual_place(test_db, name="Café Prückel", city="Wien")
+
+        with strict_template_response():
+            response = client.post(
+                f"/places/canonical/{place_id}/update",
+                data={"name": "Café Central", "city": "Wien"},
+            )
+
+        assert response.status_code == 200
+        assert "existiert bereits" in response.text
+        assert db_module.get_canonical_place(place_id, test_db)["name"] == "Café Prückel"
+
+    def test_empty_name_shows_error(self, client: TestClient, test_db: Path) -> None:
+        place_id = self._manual_place(test_db)
+
+        response = client.post(
+            f"/places/canonical/{place_id}/update", data={"name": "  ", "city": "Wien"}
+        )
+
+        assert response.status_code == 200
+        assert "Pflichtfeld" in response.text
+        assert db_module.get_canonical_place(place_id, test_db)["name"] == "Café Prückel"
+
+    def test_create_duplicate_shows_error_in_form(
+        self, client: TestClient, test_db: Path
+    ) -> None:
+        """The create path shares the form, so its errors must be swappable HTML too."""
+        self._manual_place(test_db, name="Café Central", city="Wien")
+
+        with strict_template_response():
+            response = client.post(
+                "/places/create", data={"name": "Café Central", "city": "Wien"}
+            )
+
+        assert response.status_code == 200
+        assert "existiert bereits" in response.text
+
+    def test_create_succeeds_and_refreshes(self, client: TestClient, test_db: Path) -> None:
+        response = client.post("/places/create", data={"name": "Neu", "city": "Linz"})
+
+        assert response.headers.get("hx-refresh") == "true"
+        assert [p["name"] for p in db_module.get_all_places(db_path=test_db)] == ["Neu"]

@@ -29,24 +29,28 @@
           {% if p.lat %}&#x1F4CD;{% else %}<span title="Nicht geocodiert">&#x26A0;</span>{% endif %}
           {{ p.name or '–' }}
         </strong>
-        {% if p.description %}<br><small>{{ p.description }}</small>{% endif %}
-        <br>
-        <form hx-post="/places/canonical/{{ p.id }}/set-active" hx-swap="none" style="display:inline">
-          <input type="hidden" name="is_active" value="{{ 0 if p.is_active else 1 }}">
-          <button type="submit" class="merge-toggle"
-                  title="{{ 'Als geschlossen markieren' if p.is_active else 'Als aktiv markieren' }}">
-            {{ '✓ aktiv' if p.is_active else '✕ geschlossen' }}
-          </button>
-        </form>
-        {% if p.source == 'manual' %}
-        <form hx-post="/places/manual/{{ p.id }}/geocode" hx-swap="none" style="display:inline">
-          <button type="submit" class="merge-toggle" title="Koordinaten via Nominatim abrufen">&#x1F4CD; geocodieren</button>
-        </form>
-        {% else %}
-        <button class="merge-toggle" type="button"
-                onclick="toggleMerge(this, {{ p.id }})"
-                title="Zusammenführen">⤵ zusammenführen</button>
-        {% endif %}
+        <div class="place-actions">
+          <form hx-post="/places/canonical/{{ p.id }}/set-active" hx-swap="none">
+            <input type="hidden" name="is_active" value="{{ 0 if p.is_active else 1 }}">
+            <button type="submit" class="merge-toggle"
+                    title="{{ 'Als geschlossen markieren' if p.is_active else 'Als aktiv markieren' }}">
+              {{ '✓ aktiv' if p.is_active else '✕ geschlossen' }}
+            </button>
+          </form>
+          <button class="merge-toggle" type="button"
+                  hx-get="/places/canonical/{{ p.id }}/edit-form"
+                  hx-target="#manual-place-form" hx-swap="innerHTML"
+                  title="Stammdaten bearbeiten">&#x270E; bearbeiten</button>
+          {% if p.source == 'manual' %}
+          <form hx-post="/places/manual/{{ p.id }}/geocode" hx-swap="none">
+            <button type="submit" class="merge-toggle" title="Koordinaten via Nominatim abrufen">&#x1F4CD; geocodieren</button>
+          </form>
+          {% else %}
+          <button class="merge-toggle" type="button"
+                  onclick="toggleMerge(this, {{ p.id }})"
+                  title="Zusammenführen">⤵ zusammenführen</button>
+          {% endif %}
+        </div>
         <div id="merge-form-{{ p.id }}" class="merge-form" style="display:none">
           <form hx-post="/places/canonical/{{ p.id }}/merge" hx-target="#places-results"
                 hx-select="#places-results" hx-swap="outerHTML">
@@ -59,6 +63,9 @@
             </button>
           </form>
         </div>
+        {% if p.description %}
+          <small class="place-description" title="{{ p.description }}">{{ p.description }}</small>
+        {% endif %}
       </td>
       <td>{{ p.address or '–' }}</td>
       <td>
@@ -105,6 +112,13 @@
   font-size: .72rem; padding: .1rem 0; margin-top: .25rem;
 }
 .merge-toggle:hover { color: #2563eb; }
+/* Actions sit directly under the name — long descriptions used to push them
+   several hundred pixels down, out of the viewport. */
+.place-actions { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; }
+.place-description {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  line-clamp: 3; overflow: hidden; margin-top: .3rem;
+}
 .merge-form { margin-top: .3rem; }
 .merge-form form { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
 .place-inactive { opacity: 0.5; }

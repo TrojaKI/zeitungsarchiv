@@ -222,10 +222,10 @@ class TestGeocodeSourcePersistence:
         place = db.get_place(pa_id, db_path)
         assert place["geocode_source"] == "manual"
 
-    def test_update_manual_place_persists_geocode_source(self, db_path: Path):
+    def test_update_canonical_place_persists_geocode_source(self, db_path: Path):
         place_id = db.insert_manual_place({"name": "Café Test", "city": "Wien"}, db_path)
 
-        db.update_manual_place(
+        db.update_canonical_place(
             place_id, {"lat": 48.2, "lng": 16.3, "geocode_source": "manual"}, db_path
         )
 
@@ -233,13 +233,13 @@ class TestGeocodeSourcePersistence:
         assert place["geocode_source"] == "manual"
 
 
-class TestUpdateManualPlaceKeys:
+class TestUpdateCanonicalPlaceKeys:
     """Partial updates must not wipe dedup keys or the NOT NULL name."""
 
     def test_city_only_update_keeps_name_key(self, db_path: Path):
         place_id = db.insert_manual_place({"name": "Café Prückel", "city": "Wien"}, db_path)
 
-        db.update_manual_place(place_id, {"city": "Linz"}, db_path)
+        db.update_canonical_place(place_id, {"city": "Linz"}, db_path)
 
         place = db.get_manual_place(place_id, db_path)
         assert place["name_key"] == "café prückel"
@@ -248,7 +248,7 @@ class TestUpdateManualPlaceKeys:
     def test_empty_name_does_not_overwrite_existing(self, db_path: Path):
         place_id = db.insert_manual_place({"name": "Bestand", "city": "Wien"}, db_path)
 
-        db.update_manual_place(place_id, {"name": None, "city": "Graz"}, db_path)
+        db.update_canonical_place(place_id, {"name": None, "city": "Graz"}, db_path)
 
         place = db.get_manual_place(place_id, db_path)
         assert place["name"] == "Bestand"
@@ -258,6 +258,42 @@ class TestUpdateManualPlaceKeys:
         # Curly apostrophe (U+2019) must map to ASCII "'" like article places do
         place_id = db.insert_manual_place({"name": "L’Osteria", "city": "Wien"}, db_path)
         assert db.get_manual_place(place_id, db_path)["name_key"] == "l'osteria"
+
+
+class TestUpdateCanonicalPlaceCoversArticlePlaces:
+    """The places list edits both kinds of place, so the update must not be manual-only."""
+
+    def _article_place_id(self, db_path: Path) -> int:
+        article_id = db.insert_article(_article(), db_path)
+        db.insert_places(article_id, [{"name": "Gasthaus Test", "city": "Wien"}], db_path)
+        return db.get_places(article_id, db_path)[0]["place_id"]
+
+    def test_article_sourced_place_can_be_updated(self, db_path: Path):
+        place_id = self._article_place_id(db_path)
+
+        db.update_canonical_place(place_id, {"phone": "01 234567"}, db_path)
+
+        assert db.get_canonical_place(place_id, db_path)["phone"] == "01 234567"
+
+    def test_article_sourced_rename_syncs_dedup_keys(self, db_path: Path):
+        place_id = self._article_place_id(db_path)
+
+        db.update_canonical_place(place_id, {"name": "Gasthaus Neu"}, db_path)
+
+        place = db.get_canonical_place(place_id, db_path)
+        assert place["name"] == "Gasthaus Neu"
+        assert place["name_key"] == "gasthaus neu"
+
+    def test_state_is_persisted(self, db_path: Path):
+        # 'state' was missing from the field whitelist and would be dropped silently
+        place_id = db.insert_manual_place({"name": "Café Test", "city": "Wien"}, db_path)
+
+        db.update_canonical_place(place_id, {"state": "Wien"}, db_path)
+
+        assert db.get_canonical_place(place_id, db_path)["state"] == "Wien"
+
+    def test_get_canonical_place_returns_none_for_unknown_id(self, db_path: Path):
+        assert db.get_canonical_place(999_999, db_path) is None
 
 
 class TestGeocodeFailedMarker:
